@@ -1,96 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Syntacx Ops Design System
+   Professional SaaS for financial analytics
+   Colors: Deep blue primary, teal success, warm accents
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core backgrounds */
+    --background: 220 20% 97%;
+    --foreground: 222 47% 11%;
 
+    /* Cards & elevated surfaces */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
 
+    /* Popovers & dropdowns */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 222.2 47.4% 11.2%;
+    /* Primary: Deep professional blue */
+    --primary: 222 65% 25%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary: Soft blue-gray */
+    --secondary: 215 25% 92%;
+    --secondary-foreground: 222 47% 20%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted: Subtle backgrounds */
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 10% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent: Teal for highlights */
+    --accent: 168 65% 40%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Success: Green for positive metrics */
+    --success: 152 60% 40%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 152 40% 92%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Warning: Amber for alerts */
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 15%;
+    --warning-muted: 38 60% 92%;
 
-    --radius: 0.5rem;
+    /* Destructive: Red for negative */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-muted: 0 50% 94%;
 
-    --sidebar-background: 0 0% 98%;
+    /* Profit indicators */
+    --profit: 152 60% 35%;
+    --profit-foreground: 0 0% 100%;
+    --loss: 0 72% 51%;
+    --loss-foreground: 0 0% 100%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Form elements */
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 222 65% 45%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --radius: 0.625rem;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Charts */
+    --chart-1: 222 65% 45%;
+    --chart-2: 168 65% 45%;
+    --chart-3: 152 60% 45%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 280 60% 55%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    /* Sidebar - dark theme */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 220 15% 85%;
+    --sidebar-primary: 168 65% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 40% 18%;
+    --sidebar-accent-foreground: 220 15% 95%;
+    --sidebar-border: 222 30% 20%;
+    --sidebar-ring: 168 65% 50%;
+    --sidebar-muted: 220 15% 60%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(222 65% 25%), hsl(222 65% 35%));
+    --gradient-success: linear-gradient(135deg, hsl(152 60% 35%), hsl(168 65% 40%));
+    --gradient-accent: linear-gradient(135deg, hsl(168 65% 40%), hsl(180 50% 45%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 20% 98%));
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 6%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222 47% 9%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 47% 9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 168 65% 50%;
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 222 30% 18%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 222 30% 15%;
+    --muted-foreground: 220 15% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 168 65% 45%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --success: 152 60% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 152 30% 15%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 0%;
+    --warning-muted: 38 40% 15%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-muted: 0 40% 15%;
+
+    --profit: 152 60% 50%;
+    --profit-foreground: 0 0% 100%;
+    --loss: 0 72% 55%;
+    --loss-foreground: 0 0% 100%;
+
+    --border: 222 30% 20%;
+    --input: 222 30% 20%;
+    --ring: 168 65% 50%;
+
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 220 15% 85%;
+    --sidebar-primary: 168 65% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 222 40% 15%;
+    --sidebar-accent-foreground: 220 15% 95%;
+    --sidebar-border: 222 30% 15%;
+    --sidebar-ring: 168 65% 50%;
+    --sidebar-muted: 220 15% 50%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(222 47% 12%), hsl(222 47% 18%));
+    --gradient-success: linear-gradient(135deg, hsl(152 60% 40%), hsl(168 65% 45%));
+    --gradient-accent: linear-gradient(135deg, hsl(168 65% 45%), hsl(180 50% 50%));
+    --gradient-card: linear-gradient(180deg, hsl(222 47% 10%), hsl(222 47% 8%));
   }
 }
 
@@ -100,6 +158,181 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  /* Metric cards */
+  .metric-card {
+    @apply relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-md;
+  }
+
+  .metric-card-profit {
+    @apply metric-card border-l-4 border-l-success;
+  }
+
+  .metric-card-loss {
+    @apply metric-card border-l-4 border-l-destructive;
+  }
+
+  .metric-card-neutral {
+    @apply metric-card border-l-4 border-l-primary;
+  }
+
+  /* Stat value styling */
+  .stat-value {
+    @apply text-2xl font-bold tracking-tight;
+  }
+
+  .stat-value-profit {
+    @apply stat-value text-success;
+  }
+
+  .stat-value-loss {
+    @apply stat-value text-destructive;
+  }
+
+  /* Data tables */
+  .data-table {
+    @apply w-full text-sm;
+  }
+
+  .data-table th {
+    @apply px-4 py-3 text-left font-medium text-muted-foreground uppercase tracking-wider text-xs bg-muted/50;
+  }
+
+  .data-table td {
+    @apply px-4 py-3.5 border-t border-border;
+  }
+
+  .data-table tr:hover {
+    @apply bg-muted/30;
+  }
+
+  /* Breakdown panel */
+  .breakdown-row {
+    @apply flex items-center justify-between py-2 px-3 text-sm;
+  }
+
+  .breakdown-row:not(:last-child) {
+    @apply border-b border-border/50;
+  }
+
+  .breakdown-label {
+    @apply text-muted-foreground;
+  }
+
+  .breakdown-value {
+    @apply font-medium tabular-nums;
+  }
+
+  .breakdown-total {
+    @apply bg-primary/5 rounded-lg mt-2 py-3 px-4 font-semibold;
+  }
+
+  /* Sidebar link states */
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/80 transition-all duration-150;
+  }
+
+  .sidebar-link:hover {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground;
+  }
+
+  .sidebar-link-active {
+    @apply bg-sidebar-primary text-sidebar-primary-foreground font-medium;
+  }
+
+  /* Chart containers */
+  .chart-container {
+    @apply rounded-xl border border-border bg-card p-5;
+  }
+
+  /* Status badges */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-paid {
+    @apply bg-success-muted text-success;
+  }
+
+  .status-pending {
+    @apply bg-warning-muted text-warning-foreground;
+  }
+
+  .status-cancelled {
+    @apply bg-destructive-muted text-destructive;
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    @apply flex flex-wrap items-center gap-3 p-4 rounded-xl bg-muted/50 border border-border;
+  }
+
+  /* Page header */
+  .page-header {
+    @apply mb-6;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold tracking-tight text-foreground;
+  }
+
+  .page-description {
+    @apply text-muted-foreground mt-1;
+  }
+
+  /* KPI grid */
+  .kpi-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-success {
+    background: var(--gradient-success);
+  }
+
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

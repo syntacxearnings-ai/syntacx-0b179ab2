@@ -57,8 +57,10 @@ serve(async (req) => {
     // Generate secure state
     const state = crypto.randomUUID();
     
-    // CRITICAL: redirect_uri must match EXACTLY what's registered in ML Developers
-    const redirectUri = 'https://289fa9d9-b6c0-4489-93d0-bad81c3761bb.lovableproject.com/api/integrations/meli/callback';
+    // CRITICAL: redirect_uri must point to the Edge Function, NOT frontend route
+    // This URL must be registered in ML Developers console
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const redirectUri = `${supabaseUrl}/functions/v1/meli-oauth-callback`;
 
     // Save state to database using service role
     const supabaseAdmin = createClient(

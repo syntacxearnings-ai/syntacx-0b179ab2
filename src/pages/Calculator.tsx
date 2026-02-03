@@ -73,13 +73,13 @@ export default function Calculator() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       <PageHeader 
-        title="Calculadora de Precificação"
+        title="Precificação"
         description="Simule cenários e encontre o preço ideal para suas margens"
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Input Section */}
         <Card>
           <CardHeader>
@@ -339,7 +339,7 @@ export default function Calculator() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 {scenarios.map((scenario, index) => (
                   <div 
                     key={scenario.name}

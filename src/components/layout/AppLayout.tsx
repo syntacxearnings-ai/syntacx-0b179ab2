@@ -18,9 +18,9 @@ export function AppLayout() {
         {/* Top bar */}
         <TopBar />
         
-        {/* Main content */}
+        {/* Main content - centered container */}
         <main className="flex-1 pb-20 md:pb-6">
-          <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
+          <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             <Outlet />
           </div>
         </main>

@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -21,13 +22,16 @@ import { Order } from '@/lib/types';
 import { calculateNetProfit } from '@/lib/profitCalculator';
 import { formatCurrency, formatDate, formatDateTime, getStatusColor, statusLabels } from '@/lib/formatters';
 import { ProfitBreakdownPanel } from '@/components/dashboard/ProfitBreakdownPanel';
-import { Search, Filter, Eye, Package, Truck, Receipt, Calendar } from 'lucide-react';
+import { Search, Filter, Eye, Package, Truck, Receipt, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function Orders() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const filteredOrders = useMemo(() => {
     let orders = [...mockOrders];
@@ -53,15 +57,15 @@ export default function Orders() {
   const validOrdersCount = mockOrders.filter(o => o.status !== 'cancelled' && o.status !== 'returned').length;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       <PageHeader 
         title="Pedidos"
         description="Gerencie e analise todos os pedidos do Mercado Livre"
       />
 
       {/* Filters */}
-      <div className="filter-bar">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por ID, SKU ou produto..."
@@ -71,7 +75,7 @@ export default function Orders() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -86,92 +90,170 @@ export default function Orders() {
         </Select>
       </div>
 
-      {/* Orders Table */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Pedido</th>
-                <th>Data</th>
-                <th>Status</th>
-                <th>Produtos</th>
-                <th>Faturamento</th>
-                <th>Taxas ML</th>
-                <th>Lucro Líquido</th>
-                <th>Margem</th>
-                <th className="text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map(order => {
-                const breakdown = calculateNetProfit(order, mockFixedCosts, validOrdersCount);
-                return (
-                  <tr key={order.id}>
-                    <td className="font-medium">{order.orderIdMl}</td>
-                    <td className="text-muted-foreground">{formatDate(order.date)}</td>
-                    <td>
-                      <Badge variant="outline" className={cn("status-badge", getStatusColor(order.status))}>
-                        {statusLabels[order.status]}
-                      </Badge>
-                    </td>
-                    <td>
-                      <div className="flex flex-col gap-0.5">
-                        {order.items.slice(0, 2).map(item => (
-                          <span key={item.id} className="text-sm truncate max-w-[200px]">
-                            {item.quantity}x {item.productName}
-                          </span>
-                        ))}
-                        {order.items.length > 2 && (
-                          <span className="text-xs text-muted-foreground">
-                            +{order.items.length - 2} mais
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="font-medium">{formatCurrency(order.grossTotal)}</td>
-                    <td className="text-muted-foreground">
-                      <div className="flex flex-col">
-                        <span>{formatCurrency(breakdown.mlFeesNet)}</span>
-                        {breakdown.mlFeeDiscount > 0 && (
-                          <span className="text-xs text-success">
-                            -{formatCurrency(breakdown.mlFeeDiscount)}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={cn(
+      {/* Mobile: Cards View */}
+      {isMobile ? (
+        <div className="space-y-3">
+          {filteredOrders.map(order => {
+            const breakdown = calculateNetProfit(order, mockFixedCosts, validOrdersCount);
+            const isExpanded = expandedOrder === order.id;
+            
+            return (
+              <Card key={order.id} className="overflow-hidden">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{order.orderIdMl}</span>
+                    <Badge variant="outline" className={cn("status-badge text-xs", getStatusColor(order.status))}>
+                      {statusLabels[order.status]}
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground text-xs">Data</span>
+                      <p className="font-medium">{formatDate(order.date)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Itens</span>
+                      <p className="font-medium">{order.items.reduce((sum, item) => sum + item.quantity, 0)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Faturamento</span>
+                      <p className="font-medium">{formatCurrency(order.grossTotal)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Lucro</span>
+                      <p className={cn(
                         "font-semibold",
                         breakdown.netProfit >= 0 ? "text-success" : "text-destructive"
                       )}>
                         {formatCurrency(breakdown.netProfit)}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={cn(
-                        breakdown.netMarginPercent >= 0 ? "text-success" : "text-destructive"
-                      )}>
-                        {breakdown.netMarginPercent.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="text-right">
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t gap-2">
+                    <span className={cn(
+                      "text-sm font-medium",
+                      breakdown.netMarginPercent >= 0 ? "text-success" : "text-destructive"
+                    )}>
+                      Margem: {breakdown.netMarginPercent.toFixed(1)}%
+                    </span>
+                    <div className="flex gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                      >
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setSelectedOrder(order)}
                       >
-                        <Eye className="w-4 h-4 mr-1" />
-                        Detalhar
+                        <Eye className="w-4 h-4" />
                       </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="pt-3 border-t">
+                      <ProfitBreakdownPanel breakdown={breakdown} />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
-      </div>
+      ) : (
+        /* Desktop: Table View */
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Data</th>
+                  <th>Status</th>
+                  <th>Produtos</th>
+                  <th>Faturamento</th>
+                  <th>Taxas ML</th>
+                  <th>Lucro Líquido</th>
+                  <th>Margem</th>
+                  <th className="text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.map(order => {
+                  const breakdown = calculateNetProfit(order, mockFixedCosts, validOrdersCount);
+                  return (
+                    <tr key={order.id}>
+                      <td className="font-medium">{order.orderIdMl}</td>
+                      <td className="text-muted-foreground">{formatDate(order.date)}</td>
+                      <td>
+                        <Badge variant="outline" className={cn("status-badge", getStatusColor(order.status))}>
+                          {statusLabels[order.status]}
+                        </Badge>
+                      </td>
+                      <td>
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          {order.items.slice(0, 2).map(item => (
+                            <span key={item.id} className="text-sm truncate max-w-[200px]">
+                              {item.quantity}x {item.productName}
+                            </span>
+                          ))}
+                          {order.items.length > 2 && (
+                            <span className="text-xs text-muted-foreground">
+                              +{order.items.length - 2} mais
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="font-medium">{formatCurrency(order.grossTotal)}</td>
+                      <td className="text-muted-foreground">
+                        <div className="flex flex-col">
+                          <span>{formatCurrency(breakdown.mlFeesNet)}</span>
+                          {breakdown.mlFeeDiscount > 0 && (
+                            <span className="text-xs text-success">
+                              -{formatCurrency(breakdown.mlFeeDiscount)}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={cn(
+                          "font-semibold",
+                          breakdown.netProfit >= 0 ? "text-success" : "text-destructive"
+                        )}>
+                          {formatCurrency(breakdown.netProfit)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={cn(
+                          breakdown.netMarginPercent >= 0 ? "text-success" : "text-destructive"
+                        )}>
+                          {breakdown.netMarginPercent.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Detalhar
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Order Detail Modal */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
@@ -179,7 +261,7 @@ export default function Orders() {
           {selectedOrder && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
+                <DialogTitle className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <span>Pedido {selectedOrder.orderIdMl}</span>
                   <Badge variant="outline" className={cn("status-badge", getStatusColor(selectedOrder.status))}>
                     {statusLabels[selectedOrder.status]}
@@ -187,71 +269,111 @@ export default function Orders() {
                 </DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Order Info */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                   <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Data:</span>
-                    <span className="font-medium">{formatDateTime(selectedOrder.date)}</span>
+                    <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-muted-foreground">Data:</span>
+                      <p className="font-medium truncate">{formatDateTime(selectedOrder.date)}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <Truck className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Frete:</span>
-                    <span className="font-medium">{formatCurrency(selectedOrder.shippingTotal)}</span>
+                    <Truck className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-muted-foreground">Frete:</span>
+                      <p className="font-medium">{formatCurrency(selectedOrder.shippingTotal)}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <Receipt className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Taxas:</span>
-                    <span className="font-medium">{formatCurrency(selectedOrder.feesTotal)}</span>
+                    <Receipt className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-muted-foreground">Taxas:</span>
+                      <p className="font-medium">{formatCurrency(selectedOrder.feesTotal)}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <Package className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Itens:</span>
-                    <span className="font-medium">{selectedOrder.items.reduce((s, i) => s + i.quantity, 0)}</span>
+                    <Package className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-muted-foreground">Itens:</span>
+                      <p className="font-medium">{selectedOrder.items.reduce((s, i) => s + i.quantity, 0)}</p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Items */}
+                {/* Items - Mobile: Cards, Desktop: Table */}
                 <div>
-                  <h4 className="font-semibold mb-3">Itens do Pedido</h4>
-                  <div className="rounded-lg border border-border overflow-hidden">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>SKU</th>
-                          <th>Produto</th>
-                          <th>Qtd</th>
-                          <th>Preço Unit.</th>
-                          <th>Desconto</th>
-                          <th>Custo Unit.</th>
-                          <th>Subtotal</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedOrder.items.map(item => (
-                          <tr key={item.id}>
-                            <td className="font-mono text-sm">{item.sku}</td>
-                            <td>{item.productName}</td>
-                            <td>{item.quantity}</td>
-                            <td>{formatCurrency(item.unitPrice)}</td>
-                            <td className="text-destructive">
-                              {item.unitDiscount > 0 ? `-${formatCurrency(item.unitDiscount)}` : '-'}
-                            </td>
-                            <td className="text-muted-foreground">{formatCurrency(item.unitCost)}</td>
-                            <td className="font-medium">
-                              {formatCurrency((item.unitPrice - item.unitDiscount) * item.quantity)}
-                            </td>
+                  <h4 className="font-semibold mb-3 text-sm sm:text-base">Itens do Pedido</h4>
+                  {isMobile ? (
+                    <div className="space-y-2">
+                      {selectedOrder.items.map(item => (
+                        <Card key={item.id}>
+                          <CardContent className="p-3 space-y-2">
+                            <div className="flex justify-between items-start">
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm truncate">{item.productName}</p>
+                                <p className="text-xs text-muted-foreground font-mono">{item.sku}</p>
+                              </div>
+                              <span className="font-medium text-sm">x{item.quantity}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div>
+                                <span className="text-muted-foreground">Preço</span>
+                                <p className="font-medium">{formatCurrency(item.unitPrice)}</p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Custo</span>
+                                <p className="font-medium">{formatCurrency(item.unitCost)}</p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Total</span>
+                                <p className="font-medium">{formatCurrency((item.unitPrice - item.unitDiscount) * item.quantity)}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-border overflow-hidden">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>SKU</th>
+                            <th>Produto</th>
+                            <th>Qtd</th>
+                            <th>Preço Unit.</th>
+                            <th>Desconto</th>
+                            <th>Custo Unit.</th>
+                            <th>Subtotal</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {selectedOrder.items.map(item => (
+                            <tr key={item.id}>
+                              <td className="font-mono text-sm">{item.sku}</td>
+                              <td>{item.productName}</td>
+                              <td>{item.quantity}</td>
+                              <td>{formatCurrency(item.unitPrice)}</td>
+                              <td className="text-destructive">
+                                {item.unitDiscount > 0 ? `-${formatCurrency(item.unitDiscount)}` : '-'}
+                              </td>
+                              <td className="text-muted-foreground">{formatCurrency(item.unitCost)}</td>
+                              <td className="font-medium">
+                                {formatCurrency((item.unitPrice - item.unitDiscount) * item.quantity)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
                 {/* Profit Breakdown */}
                 <div>
-                  <h4 className="font-semibold mb-3">Cálculo do Lucro</h4>
+                  <h4 className="font-semibold mb-3 text-sm sm:text-base">Cálculo do Lucro</h4>
                   <ProfitBreakdownPanel 
                     breakdown={calculateNetProfit(selectedOrder, mockFixedCosts, validOrdersCount)} 
                   />

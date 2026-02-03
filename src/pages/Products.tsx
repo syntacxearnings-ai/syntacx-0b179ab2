@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -23,12 +24,14 @@ import { mockProducts, mockInventory, getInventoryBySku } from '@/lib/mockData';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { Search, Plus, Package, AlertTriangle, TrendingDown, Edit, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function Products() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showMovement, setShowMovement] = useState(false);
+  const isMobile = useIsMobile();
 
   const filteredProducts = mockProducts.filter(product => {
     const matchesSearch = search === '' || 
@@ -44,20 +47,21 @@ export default function Products() {
   const criticalItems = mockInventory.filter(inv => inv.available <= inv.minStock * 0.5);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       <PageHeader 
         title="Produtos & Estoque"
         description="Gerencie seu catálogo de produtos e controle de estoque"
         actions={
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Dialog open={showMovement} onOpenChange={setShowMovement}>
               <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="flex-1 sm:flex-none">
                   <History className="w-4 h-4 mr-2" />
-                  Movimentação
+                  <span className="hidden sm:inline">Movimentação</span>
+                  <span className="sm:hidden">Mov.</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Registrar Movimentação</DialogTitle>
                 </DialogHeader>
@@ -105,12 +109,13 @@ export default function Products() {
 
             <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="flex-1 sm:flex-none">
                   <Plus className="w-4 h-4 mr-2" />
-                  Novo Produto
+                  <span className="hidden sm:inline">Novo Produto</span>
+                  <span className="sm:hidden">Novo</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Cadastrar Produto</DialogTitle>
                 </DialogHeader>
@@ -154,28 +159,28 @@ export default function Products() {
 
       {/* Alerts */}
       {(lowStockItems.length > 0 || criticalItems.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {criticalItems.length > 0 && (
-            <div className="flex items-center gap-3 p-4 rounded-xl border border-destructive/30 bg-destructive/5">
-              <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-destructive" />
+            <div className="flex items-center gap-3 p-3 sm:p-4 rounded-xl border border-destructive/30 bg-destructive/5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
               </div>
-              <div>
-                <p className="font-medium text-destructive">Estoque Crítico</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="min-w-0">
+                <p className="font-medium text-destructive text-sm sm:text-base">Estoque Crítico</p>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
                   {criticalItems.length} produto(s) abaixo de 50% do mínimo
                 </p>
               </div>
             </div>
           )}
           {lowStockItems.length > 0 && (
-            <div className="flex items-center gap-3 p-4 rounded-xl border border-warning/30 bg-warning/5">
-              <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                <TrendingDown className="w-5 h-5 text-warning" />
+            <div className="flex items-center gap-3 p-3 sm:p-4 rounded-xl border border-warning/30 bg-warning/5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
+                <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
               </div>
-              <div>
-                <p className="font-medium text-warning-foreground">Estoque Baixo</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="min-w-0">
+                <p className="font-medium text-warning-foreground text-sm sm:text-base">Estoque Baixo</p>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
                   {lowStockItems.length} produto(s) no nível mínimo ou abaixo
                 </p>
               </div>
@@ -185,21 +190,21 @@ export default function Products() {
       )}
 
       <Tabs defaultValue="products" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="products" className="gap-2">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="products" className="gap-2 flex-1 sm:flex-none">
             <Package className="w-4 h-4" />
-            Produtos
+            <span>Produtos</span>
           </TabsTrigger>
-          <TabsTrigger value="stock" className="gap-2">
+          <TabsTrigger value="stock" className="gap-2 flex-1 sm:flex-none">
             <TrendingDown className="w-4 h-4" />
-            Estoque
+            <span>Estoque</span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="products" className="space-y-4">
           {/* Filters */}
-          <div className="filter-bar">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome ou SKU..."
@@ -209,7 +214,7 @@ export default function Products() {
               />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
@@ -221,102 +226,169 @@ export default function Products() {
             </Select>
           </div>
 
-          {/* Products Table */}
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Produto</th>
-                  <th>Categoria</th>
-                  <th>Custo Unit.</th>
-                  <th>Estoque</th>
-                  <th>Status</th>
-                  <th>Atualizado</th>
-                  <th className="text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.map(product => {
-                  const inventory = getInventoryBySku(product.sku);
-                  const stockLevel = inventory ? inventory.available : 0;
-                  const minStock = inventory ? inventory.minStock : 0;
-                  const isCritical = stockLevel <= minStock * 0.5;
-                  const isLow = stockLevel <= minStock;
+          {/* Products - Mobile: Cards, Desktop: Table */}
+          {isMobile ? (
+            <div className="space-y-3">
+              {filteredProducts.map(product => {
+                const inventory = getInventoryBySku(product.sku);
+                const stockLevel = inventory ? inventory.available : 0;
+                const minStock = inventory ? inventory.minStock : 0;
+                const isCritical = stockLevel <= minStock * 0.5;
+                const isLow = stockLevel <= minStock;
 
-                  return (
-                    <tr key={product.id}>
-                      <td className="font-mono text-sm">{product.sku}</td>
-                      <td className="font-medium">{product.name}</td>
-                      <td>
-                        <Badge variant="secondary">{product.category}</Badge>
-                      </td>
-                      <td>{formatCurrency(product.costUnit)}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
+                return (
+                  <Card key={product.id}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{product.sku}</p>
+                        </div>
+                        {isCritical ? (
+                          <Badge variant="destructive" className="gap-1 flex-shrink-0">
+                            <AlertTriangle className="w-3 h-3" />
+                            Crítico
+                          </Badge>
+                        ) : isLow ? (
+                          <Badge variant="outline" className="gap-1 border-warning text-warning-foreground flex-shrink-0">
+                            Baixo
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-success text-success flex-shrink-0">
+                            OK
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Categoria</span>
+                          <p className="font-medium truncate">{product.category}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Custo</span>
+                          <p className="font-medium">{formatCurrency(product.costUnit)}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Estoque</span>
+                          <p className={cn(
                             "font-medium",
                             isCritical && "text-destructive",
                             isLow && !isCritical && "text-warning-foreground"
                           )}>
                             {stockLevel}
-                          </span>
-                          {inventory?.reserved ? (
-                            <span className="text-xs text-muted-foreground">
-                              ({inventory.reserved} reservado)
-                            </span>
-                          ) : null}
+                          </p>
                         </div>
-                      </td>
-                      <td>
-                        {isCritical ? (
-                          <Badge variant="destructive" className="gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            Crítico
-                          </Badge>
-                        ) : isLow ? (
-                          <Badge variant="outline" className="gap-1 border-warning text-warning-foreground">
-                            <TrendingDown className="w-3 h-3" />
-                            Baixo
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="gap-1 border-success text-success">
-                            OK
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="text-muted-foreground text-sm">
-                        {formatDate(product.updatedAt)}
-                      </td>
-                      <td className="text-right">
+                      </div>
+
+                      <div className="flex justify-end pt-2 border-t">
                         <Button variant="ghost" size="sm">
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-4 h-4 mr-1" />
+                          Editar
                         </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Produto</th>
+                    <th>Categoria</th>
+                    <th>Custo Unit.</th>
+                    <th>Estoque</th>
+                    <th>Status</th>
+                    <th>Atualizado</th>
+                    <th className="text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProducts.map(product => {
+                    const inventory = getInventoryBySku(product.sku);
+                    const stockLevel = inventory ? inventory.available : 0;
+                    const minStock = inventory ? inventory.minStock : 0;
+                    const isCritical = stockLevel <= minStock * 0.5;
+                    const isLow = stockLevel <= minStock;
+
+                    return (
+                      <tr key={product.id}>
+                        <td className="font-mono text-sm">{product.sku}</td>
+                        <td className="font-medium">{product.name}</td>
+                        <td>
+                          <Badge variant="secondary">{product.category}</Badge>
+                        </td>
+                        <td>{formatCurrency(product.costUnit)}</td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "font-medium",
+                              isCritical && "text-destructive",
+                              isLow && !isCritical && "text-warning-foreground"
+                            )}>
+                              {stockLevel}
+                            </span>
+                            {inventory?.reserved ? (
+                              <span className="text-xs text-muted-foreground">
+                                ({inventory.reserved} reservado)
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td>
+                          {isCritical ? (
+                            <Badge variant="destructive" className="gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              Crítico
+                            </Badge>
+                          ) : isLow ? (
+                            <Badge variant="outline" className="gap-1 border-warning text-warning-foreground">
+                              <TrendingDown className="w-3 h-3" />
+                              Baixo
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="gap-1 border-success text-success">
+                              OK
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="text-muted-foreground text-sm">
+                          {formatDate(product.updatedAt)}
+                        </td>
+                        <td className="text-right">
+                          <Button variant="ghost" size="sm">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="stock" className="space-y-4">
           {/* Stock Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="metric-card">
-              <p className="text-sm text-muted-foreground mb-1">Total de Produtos</p>
-              <p className="stat-value">{mockProducts.length}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total de Produtos</p>
+              <p className="text-lg sm:text-2xl font-bold">{mockProducts.length}</p>
             </div>
             <div className="metric-card">
-              <p className="text-sm text-muted-foreground mb-1">Unidades em Estoque</p>
-              <p className="stat-value">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">Unidades em Estoque</p>
+              <p className="text-lg sm:text-2xl font-bold">
                 {mockInventory.reduce((sum, inv) => sum + inv.available, 0)}
               </p>
             </div>
             <div className="metric-card">
-              <p className="text-sm text-muted-foreground mb-1">Valor em Estoque</p>
-              <p className="stat-value">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">Valor em Estoque</p>
+              <p className="text-lg sm:text-2xl font-bold">
                 {formatCurrency(
                   mockProducts.reduce((sum, prod) => {
                     const inv = getInventoryBySku(prod.sku);
@@ -327,52 +399,24 @@ export default function Products() {
             </div>
           </div>
 
-          {/* Stock Table */}
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Produto</th>
-                  <th>Disponível</th>
-                  <th>Reservado</th>
-                  <th>Mínimo</th>
-                  <th>Cobertura (dias)</th>
-                  <th>Giro Mensal</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockInventory.map(inv => {
-                  const product = mockProducts.find(p => p.sku === inv.sku);
-                  const avgDailySales = 2.5; // Simplified calculation
-                  const coverageDays = Math.round(inv.available / avgDailySales);
-                  const isCritical = inv.available <= inv.minStock * 0.5;
-                  const isLow = inv.available <= inv.minStock;
+          {/* Stock - Mobile: Cards, Desktop: Table */}
+          {isMobile ? (
+            <div className="space-y-3">
+              {mockInventory.map(inv => {
+                const product = mockProducts.find(p => p.sku === inv.sku);
+                const avgDailySales = 2.5;
+                const coverageDays = Math.round(inv.available / avgDailySales);
+                const isCritical = inv.available <= inv.minStock * 0.5;
+                const isLow = inv.available <= inv.minStock;
 
-                  return (
-                    <tr key={inv.id}>
-                      <td className="font-mono text-sm">{inv.sku}</td>
-                      <td className="font-medium">{product?.name || '-'}</td>
-                      <td className={cn(
-                        "font-medium",
-                        isCritical && "text-destructive",
-                        isLow && !isCritical && "text-warning-foreground"
-                      )}>
-                        {inv.available}
-                      </td>
-                      <td className="text-muted-foreground">{inv.reserved}</td>
-                      <td className="text-muted-foreground">{inv.minStock}</td>
-                      <td>
-                        <span className={cn(
-                          coverageDays < 7 && "text-destructive",
-                          coverageDays < 14 && coverageDays >= 7 && "text-warning-foreground"
-                        )}>
-                          {coverageDays} dias
-                        </span>
-                      </td>
-                      <td className="text-muted-foreground">~{Math.round(avgDailySales * 30)}</td>
-                      <td>
+                return (
+                  <Card key={inv.id}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{product?.name || '-'}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{inv.sku}</p>
+                        </div>
                         {isCritical ? (
                           <Badge variant="destructive">Crítico</Badge>
                         ) : isLow ? (
@@ -388,13 +432,112 @@ export default function Products() {
                             Saudável
                           </Badge>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-4 gap-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Disp.</span>
+                          <p className={cn(
+                            "font-medium",
+                            isCritical && "text-destructive",
+                            isLow && !isCritical && "text-warning-foreground"
+                          )}>
+                            {inv.available}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Res.</span>
+                          <p className="font-medium">{inv.reserved}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Mín.</span>
+                          <p className="font-medium">{inv.minStock}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Cobert.</span>
+                          <p className={cn(
+                            "font-medium",
+                            coverageDays < 7 && "text-destructive",
+                            coverageDays < 14 && coverageDays >= 7 && "text-warning-foreground"
+                          )}>
+                            {coverageDays}d
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Produto</th>
+                    <th>Disponível</th>
+                    <th>Reservado</th>
+                    <th>Mínimo</th>
+                    <th>Cobertura (dias)</th>
+                    <th>Giro Mensal</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mockInventory.map(inv => {
+                    const product = mockProducts.find(p => p.sku === inv.sku);
+                    const avgDailySales = 2.5;
+                    const coverageDays = Math.round(inv.available / avgDailySales);
+                    const isCritical = inv.available <= inv.minStock * 0.5;
+                    const isLow = inv.available <= inv.minStock;
+
+                    return (
+                      <tr key={inv.id}>
+                        <td className="font-mono text-sm">{inv.sku}</td>
+                        <td className="font-medium">{product?.name || '-'}</td>
+                        <td className={cn(
+                          "font-medium",
+                          isCritical && "text-destructive",
+                          isLow && !isCritical && "text-warning-foreground"
+                        )}>
+                          {inv.available}
+                        </td>
+                        <td className="text-muted-foreground">{inv.reserved}</td>
+                        <td className="text-muted-foreground">{inv.minStock}</td>
+                        <td>
+                          <span className={cn(
+                            coverageDays < 7 && "text-destructive",
+                            coverageDays < 14 && coverageDays >= 7 && "text-warning-foreground"
+                          )}>
+                            {coverageDays} dias
+                          </span>
+                        </td>
+                        <td className="text-muted-foreground">~{Math.round(avgDailySales * 30)}</td>
+                        <td>
+                          {isCritical ? (
+                            <Badge variant="destructive">Crítico</Badge>
+                          ) : isLow ? (
+                            <Badge variant="outline" className="border-warning text-warning-foreground">
+                              Baixo
+                            </Badge>
+                          ) : coverageDays < 14 ? (
+                            <Badge variant="outline" className="border-chart-4 text-chart-4">
+                              Atenção
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-success text-success">
+                              Saudável
+                            </Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

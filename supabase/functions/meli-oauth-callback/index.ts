@@ -136,12 +136,18 @@ serve(async (req) => {
       });
     }
 
-    console.log('[ML Callback] Tokens received:', {
-      access_token: tokens.access_token ? 'present' : 'missing',
-      refresh_token: tokens.refresh_token ? 'present' : 'missing',
-      expires_in: tokens.expires_in,
-      user_id: tokens.user_id
-    });
+    // Detailed logging of token response (without exposing secrets)
+    console.log('[ML Callback] ===== TOKEN RESPONSE ANALYSIS =====');
+    console.log('[ML Callback] access_token:', tokens.access_token ? `present (${tokens.access_token.substring(0, 20)}...)` : 'MISSING');
+    console.log('[ML Callback] refresh_token:', tokens.refresh_token ? 'present' : 'NOT RETURNED (ML did not provide refresh_token)');
+    console.log('[ML Callback] expires_in:', tokens.expires_in);
+    console.log('[ML Callback] user_id:', tokens.user_id);
+    console.log('[ML Callback] token_type:', tokens.token_type);
+    console.log('[ML Callback] scope:', tokens.scope);
+
+    if (!tokens.refresh_token) {
+      console.warn('[ML Callback] ⚠️ No refresh_token received. User will need to reconnect when access_token expires.');
+    }
 
     // Get ML user info
     const userResponse = await fetch('https://api.mercadolibre.com/users/me', {
@@ -164,11 +170,12 @@ serve(async (req) => {
     // Calculate token expiration
     const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000)).toISOString();
 
-    // Upsert integration - handle case where refresh_token might be null
+    // Build integration data - refresh_token is now nullable
     const integrationData: Record<string, unknown> = {
       user_id: stateData.user_id,
       ml_user_id: String(mlUser.id),
       access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token || null, // Nullable - save null if not provided
       token_expires_at: expiresAt,
       nickname: mlUser.nickname,
       email: mlUser.email,
@@ -177,14 +184,7 @@ serve(async (req) => {
       updated_at: new Date().toISOString(),
     };
 
-    // Only include refresh_token if it exists
-    if (tokens.refresh_token) {
-      integrationData.refresh_token = tokens.refresh_token;
-    } else {
-      // Set a placeholder to satisfy NOT NULL constraint
-      // This will be updated when we get a proper refresh token
-      integrationData.refresh_token = 'pending_refresh_token';
-    }
+    console.log('[ML Callback] Saving integration with refresh_token:', tokens.refresh_token ? 'YES' : 'NO (null)');
 
     const { error: upsertError } = await supabaseAdmin
       .from('mercadolivre_integrations')
@@ -195,12 +195,12 @@ serve(async (req) => {
       return new Response(null, {
         status: 302,
         headers: {
-          'Location': `${frontendUrl}/integrations?ml_error=db_error&ml_error_description=${encodeURIComponent('Falha ao salvar integração')}`,
+          'Location': `${frontendUrl}/integrations?ml_error=db_error&ml_error_description=${encodeURIComponent('Falha ao salvar integração: ' + upsertError.message)}`,
         },
       });
     }
 
-    console.log('[ML Callback] Integration saved successfully');
+    console.log('[ML Callback] ✅ Integration saved successfully');
 
     // Clean up used state
     await supabaseAdmin.from('oauth_states').delete().eq('id', stateData.id);

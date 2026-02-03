@@ -301,7 +301,7 @@ export default function Integrations() {
                 <li>Crie uma nova aplicação</li>
                 <li>Copie o App ID (Client ID) e Secret</li>
                 <li>Configure a Redirect URI como:<br/>
-                  <code className="text-xs bg-muted p-1 rounded break-all">https://289fa9d9-b6c0-4489-93d0-bad81c3761bb.lovableproject.com/api/integrations/meli/callback</code>
+                  <code className="text-xs bg-muted p-1 rounded break-all">https://vzgrnfoqdhjizttoxnhh.supabase.co/functions/v1/meli-oauth-callback</code>
                 </li>
               </ol>
             </div>

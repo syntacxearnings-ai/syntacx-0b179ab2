@@ -8,7 +8,6 @@ import {
   Calculator, 
   Settings,
   Link as LinkIcon,
-  LogOut,
   ChevronLeft,
   ChevronRight,
   TrendingUp
@@ -16,6 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { useIntegration } from '@/hooks/useIntegration';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -31,11 +31,12 @@ const navItems = [
 export function AppSidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const { isConnected } = useIntegration();
 
   return (
     <aside 
       className={cn(
-        "fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 z-50",
+        "fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 z-50 hidden md:flex",
         collapsed ? "w-16" : "w-64"
       )}
     >
@@ -80,12 +81,23 @@ export function AppSidebar() {
         })}
       </nav>
 
-      {/* Demo Badge */}
+      {/* Connection Status */}
       {!collapsed && (
         <div className="px-3 pb-3">
-          <div className="rounded-lg bg-sidebar-accent/50 border border-sidebar-border p-3">
-            <p className="text-xs text-sidebar-muted">Modo Demo</p>
-            <p className="text-xs text-sidebar-foreground mt-0.5">Dados simulados para demonstração</p>
+          <div className={cn(
+            "rounded-lg border p-3",
+            isConnected 
+              ? "bg-success/10 border-success/30" 
+              : "bg-warning/10 border-warning/30"
+          )}>
+            <p className="text-xs font-medium">
+              {isConnected ? 'Mercado Livre Conectado' : 'ML Não Conectado'}
+            </p>
+            <p className="text-xs text-sidebar-muted mt-0.5">
+              {isConnected 
+                ? 'Dados sincronizados' 
+                : 'Conecte para ver dados reais'}
+            </p>
           </div>
         </div>
       )}

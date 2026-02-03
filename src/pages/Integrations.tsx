@@ -12,12 +12,54 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Link2, ShoppingBag, CheckCircle2, AlertCircle, RefreshCw, ExternalLink } from 'lucide-react';
+import { Link2, ShoppingBag, CheckCircle2, AlertCircle, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIntegration } from '@/hooks/useIntegration';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Integrations() {
   const [showMlConnect, setShowMlConnect] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [clientId, setClientId] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
+  const { integration, isConnected, isLoading, disconnect, isDisconnecting } = useIntegration();
+  const { toast } = useToast();
+
+  const handleConnect = () => {
+    if (!clientId || !clientSecret) {
+      toast({
+        variant: 'destructive',
+        title: 'Campos obrigatórios',
+        description: 'Preencha o Client ID e Client Secret',
+      });
+      return;
+    }
+
+    // Build OAuth URL
+    const redirectUri = `${window.location.origin}/api/integrations/meli/callback`;
+    const state = crypto.randomUUID();
+    
+    // Store state for verification
+    sessionStorage.setItem('ml_oauth_state', state);
+    sessionStorage.setItem('ml_client_id', clientId);
+    sessionStorage.setItem('ml_client_secret', clientSecret);
+
+    // Redirect to Mercado Livre OAuth
+    const authUrl = new URL('https://auth.mercadolivre.com.br/authorization');
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('client_id', clientId);
+    authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('state', state);
+
+    window.location.href = authUrl.toString();
+  };
+
+  const handleDisconnect = () => {
+    disconnect();
+    toast({
+      title: 'Desconectado',
+      description: 'Integração com Mercado Livre removida',
+    });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -33,21 +75,23 @@ export default function Integrations() {
           isConnected ? "border-success/30" : "border-border"
         )}>
           <CardHeader>
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className={cn(
-                  "w-14 h-14 rounded-xl flex items-center justify-center",
+                  "w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center flex-shrink-0",
                   isConnected ? "bg-success/10" : "bg-warning/10"
                 )}>
                   <ShoppingBag className={cn(
-                    "w-8 h-8",
+                    "w-6 h-6 sm:w-8 sm:h-8",
                     isConnected ? "text-success" : "text-warning"
                   )} />
                 </div>
                 <div>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex flex-wrap items-center gap-2">
                     Mercado Livre
-                    {isConnected ? (
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isConnected ? (
                       <Badge variant="outline" className="border-success text-success">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         Conectado
@@ -65,62 +109,75 @@ export default function Integrations() {
                 </div>
               </div>
               {isConnected ? (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Button variant="outline" size="sm">
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Sincronizar
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setIsConnected(false)}>
-                    Desconectar
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleDisconnect}
+                    disabled={isDisconnecting}
+                  >
+                    {isDisconnecting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Desconectar'
+                    )}
                   </Button>
                 </div>
               ) : (
-                <Button onClick={() => setShowMlConnect(true)}>
+                <Button onClick={() => setShowMlConnect(true)} className="w-full sm:w-auto">
                   <Link2 className="w-4 h-4 mr-2" />
                   Conectar
                 </Button>
               )}
             </div>
           </CardHeader>
-          {isConnected && (
+          {isConnected && integration && (
             <CardContent className="border-t pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-2xl font-bold">85</p>
-                  <p className="text-xs text-muted-foreground">Pedidos Sincronizados</p>
+                  <p className="text-lg sm:text-2xl font-bold">{integration.nickname || '-'}</p>
+                  <p className="text-xs text-muted-foreground">Usuário ML</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-2xl font-bold">8</p>
-                  <p className="text-xs text-muted-foreground">Produtos</p>
+                  <p className="text-lg sm:text-2xl font-bold">{integration.site_id}</p>
+                  <p className="text-xs text-muted-foreground">Site</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-2xl font-bold">Há 5 min</p>
+                  <p className="text-lg sm:text-2xl font-bold">
+                    {integration.last_sync_at 
+                      ? new Date(integration.last_sync_at).toLocaleDateString('pt-BR')
+                      : 'Nunca'}
+                  </p>
                   <p className="text-xs text-muted-foreground">Última Sincronização</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-2xl font-bold text-success">Ativo</p>
-                  <p className="text-xs text-muted-foreground">Status do Token</p>
+                  <p className="text-lg sm:text-2xl font-bold text-success">Ativo</p>
+                  <p className="text-xs text-muted-foreground">Status</p>
                 </div>
               </div>
             </CardContent>
           )}
         </Card>
 
-        {/* Demo Mode Notice */}
-        {!isConnected && (
+        {/* Not Connected Notice */}
+        {!isConnected && !isLoading && (
           <Card className="border-dashed">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+            <CardContent className="flex flex-col sm:flex-row items-center gap-4 p-6">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <AlertCircle className="w-6 h-6 text-primary" />
               </div>
-              <div className="flex-1">
-                <h4 className="font-semibold">Modo Demo Ativo</h4>
+              <div className="flex-1 text-center sm:text-left">
+                <h4 className="font-semibold">Conecte sua conta</h4>
                 <p className="text-sm text-muted-foreground mt-1">
-                  O app está funcionando com dados simulados. Conecte sua conta do Mercado Livre para ver dados reais.
+                  Conecte sua conta do Mercado Livre para ver dados reais de vendas, pedidos e lucro.
                 </p>
               </div>
-              <Button variant="outline" onClick={() => setShowMlConnect(true)}>
-                Sair do Modo Demo
+              <Button variant="outline" onClick={() => setShowMlConnect(true)} className="w-full sm:w-auto">
+                Conectar agora
               </Button>
             </CardContent>
           </Card>
@@ -135,7 +192,7 @@ export default function Integrations() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { title: 'Pedidos', desc: 'ID, data, status, itens, valores' },
                 { title: 'Taxas', desc: 'Comissão, frete, custos de envio' },
@@ -162,38 +219,49 @@ export default function Integrations() {
               Conectar Mercado Livre
             </DialogTitle>
             <DialogDescription>
-              Autorize o Syntacx Ops a acessar sua conta do Mercado Livre
+              Você precisa criar um app no Mercado Livre Developers para obter as credenciais
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div className="p-4 rounded-lg bg-muted/50 text-sm">
-              <p className="font-medium mb-2">Permissões necessárias:</p>
-              <ul className="space-y-1 text-muted-foreground">
-                <li>• Leitura de pedidos e vendas</li>
-                <li>• Leitura de produtos e anúncios</li>
-                <li>• Leitura de taxas e comissões</li>
-                <li>• Leitura de estoque</li>
-              </ul>
+              <p className="font-medium mb-2">Como obter as credenciais:</p>
+              <ol className="space-y-1 text-muted-foreground list-decimal list-inside">
+                <li>Acesse <a href="https://developers.mercadolibre.com.br/apps" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mercado Livre Developers</a></li>
+                <li>Crie uma nova aplicação</li>
+                <li>Copie o App ID (Client ID) e Secret</li>
+                <li>Configure a Redirect URI como:<br/>
+                  <code className="text-xs bg-muted p-1 rounded">{window.location.origin}/api/integrations/meli/callback</code>
+                </li>
+              </ol>
             </div>
 
             <div className="space-y-2">
-              <Label>Client ID (opcional para demo)</Label>
-              <Input placeholder="App ID do Mercado Livre" />
+              <Label htmlFor="client-id">Client ID (App ID)</Label>
+              <Input 
+                id="client-id"
+                placeholder="Ex: 1234567890123456" 
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+              />
             </div>
             
             <div className="space-y-2">
-              <Label>Client Secret (opcional para demo)</Label>
-              <Input type="password" placeholder="Secret do Mercado Livre" />
+              <Label htmlFor="client-secret">Client Secret</Label>
+              <Input 
+                id="client-secret"
+                type="password" 
+                placeholder="Secret do Mercado Livre"
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+              />
             </div>
 
             <div className="flex gap-2 pt-2">
               <Button 
                 className="flex-1" 
-                onClick={() => {
-                  setIsConnected(true);
-                  setShowMlConnect(false);
-                }}
+                onClick={handleConnect}
+                disabled={!clientId || !clientSecret}
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Autorizar com OAuth

@@ -6,17 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface SyncLog {
-  id: string;
-  user_id: string;
-  sync_type: string;
-  status: string;
-  started_at: string;
-  finished_at: string | null;
-  records_synced: number | null;
-  error_message: string | null;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function refreshTokenIfNeeded(
   supabaseAdmin: any,
@@ -33,14 +22,12 @@ async function refreshTokenIfNeeded(
   const now = new Date();
   const bufferMinutes = 5;
   
-  // If token is still valid, return it
   if (expiresAt.getTime() - bufferMinutes * 60 * 1000 > now.getTime()) {
     return integration.access_token;
   }
 
   console.log('[ML Sync] Token expired or expiring soon, attempting refresh...');
 
-  // If no refresh token, we can't refresh
   if (!integration.refresh_token) {
     console.error('[ML Sync] No refresh token available, user needs to reconnect');
     await supabaseAdmin
@@ -50,7 +37,6 @@ async function refreshTokenIfNeeded(
     return null;
   }
 
-  // Attempt to refresh
   try {
     const response = await fetch('https://api.mercadolibre.com/oauth/token', {
       method: 'POST',
@@ -127,18 +113,19 @@ async function fetchMLOrders(accessToken: string, sellerId: string, dateFrom?: s
     hasMore = data.paging && offset + limit < data.paging.total;
     offset += limit;
 
-    // Rate limiting
     await new Promise(resolve => setTimeout(resolve, 200));
   }
 
   return orders;
 }
 
-async function fetchMLProducts(accessToken: string, sellerId: string): Promise<unknown[]> {
+async function fetchMLListings(accessToken: string, sellerId: string): Promise<unknown[]> {
   const items: unknown[] = [];
   let offset = 0;
   const limit = 50;
   let hasMore = true;
+
+  console.log('[ML Sync] Fetching listings for seller:', sellerId);
 
   while (hasMore) {
     const response = await fetch(
@@ -147,24 +134,33 @@ async function fetchMLProducts(accessToken: string, sellerId: string): Promise<u
     );
 
     if (!response.ok) {
-      console.error('[ML Sync] Items search failed:', await response.text());
+      const errorText = await response.text();
+      console.error('[ML Sync] Items search failed:', errorText);
       break;
     }
 
     const data = await response.json();
     const itemIds = data.results || [];
     
+    console.log('[ML Sync] Found', itemIds.length, 'item IDs at offset', offset);
+    
     if (itemIds.length > 0) {
-      // Fetch item details in batches
-      const idsParam = itemIds.join(',');
-      const detailsResponse = await fetch(
-        `https://api.mercadolibre.com/items?ids=${idsParam}`,
-        { headers: { 'Authorization': `Bearer ${accessToken}` } }
-      );
+      // Fetch item details in batches of 20 (ML limit)
+      for (let i = 0; i < itemIds.length; i += 20) {
+        const batch = itemIds.slice(i, i + 20);
+        const idsParam = batch.join(',');
+        
+        const detailsResponse = await fetch(
+          `https://api.mercadolibre.com/items?ids=${idsParam}&attributes=id,title,status,sub_status,price,original_price,available_quantity,sold_quantity,listing_type_id,shipping,condition,category_id,site_id,permalink,thumbnail,variations,date_created,last_updated,seller_custom_field`,
+          { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        );
 
-      if (detailsResponse.ok) {
-        const details = await detailsResponse.json();
-        items.push(...details.map((d: { body: unknown }) => d.body));
+        if (detailsResponse.ok) {
+          const details = await detailsResponse.json();
+          items.push(...details.filter((d: { code?: number }) => !d.code).map((d: { body: unknown }) => d.body));
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
@@ -174,6 +170,7 @@ async function fetchMLProducts(accessToken: string, sellerId: string): Promise<u
     await new Promise(resolve => setTimeout(resolve, 200));
   }
 
+  console.log('[ML Sync] Total listings fetched:', items.length);
   return items;
 }
 
@@ -214,9 +211,9 @@ serve(async (req) => {
     const userId = userData.user.id;
     console.log('[ML Sync] Starting sync for user:', userId);
 
-    // Parse request body
     const body = await req.json().catch(() => ({}));
     const fullSync = body.full_sync === true;
+    const syncType = body.sync_type || 'full'; // 'full', 'orders', 'listings'
 
     // Get integration
     const { data: integration, error: integrationError } = await supabaseAdmin
@@ -244,7 +241,7 @@ serve(async (req) => {
       .from('sync_logs')
       .insert({
         user_id: userId,
-        sync_type: 'full',
+        sync_type: syncType,
         status: 'running',
       })
       .select()
@@ -268,201 +265,298 @@ serve(async (req) => {
       );
     }
 
-    // Determine date range for orders
-    let dateFrom: string | undefined;
-    if (!fullSync && integration.last_sync_at) {
-      dateFrom = integration.last_sync_at;
-    } else {
-      // Full sync: last 90 days
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-      dateFrom = ninetyDaysAgo.toISOString();
-    }
-
-    console.log('[ML Sync] Fetching orders from:', dateFrom);
-
-    // Fetch orders
-    const mlOrders = await fetchMLOrders(accessToken, integration.ml_user_id, dateFrom);
-    console.log('[ML Sync] Fetched', mlOrders.length, 'orders');
-
     let ordersInserted = 0;
     let itemsInserted = 0;
+    let listingsInserted = 0;
+    let listingsUpdated = 0;
+    let variationsInserted = 0;
 
-    // Process orders
-    for (const mlOrder of mlOrders) {
-      const order = mlOrder as {
-        id: number;
-        date_created: string;
-        status: string;
-        total_amount: number;
-        coupon?: { amount: number };
-        shipping?: { id: number };
-        order_items?: Array<{
-          item: { id: string; title: string; seller_sku?: string };
-          quantity: number;
-          unit_price: number;
-          sale_fee?: number;
-        }>;
-        buyer?: { nickname: string };
-      };
-
-      // Check if order exists
-      const { data: existingOrder } = await supabaseAdmin
-        .from('orders')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('order_id_ml', String(order.id))
-        .single();
-
-      const orderData = {
-        user_id: userId,
-        order_id_ml: String(order.id),
-        date_created: order.date_created,
-        status: order.status === 'paid' ? 'paid' : 
-                order.status === 'shipped' ? 'shipped' : 
-                order.status === 'delivered' ? 'delivered' :
-                order.status === 'cancelled' ? 'cancelled' : 'paid',
-        gross_total: order.total_amount || 0,
-        discounts_total: order.coupon?.amount || 0,
-        shipping_total: 0, // Will be fetched from shipment if needed
-        shipping_seller: 0,
-        fees_total: 0,
-        fee_discount_total: 0,
-        taxes_total: 0,
-        ads_total: 0,
-        packaging_cost: 0,
-        processing_cost: 0,
-        buyer_nickname: order.buyer?.nickname || null,
-      };
-
-      // Calculate fees from order items
-      let totalFees = 0;
-      if (order.order_items) {
-        for (const item of order.order_items) {
-          totalFees += item.sale_fee || 0;
-        }
-      }
-      orderData.fees_total = totalFees;
-
-      let orderId: string;
-      if (existingOrder) {
-        await supabaseAdmin
-          .from('orders')
-          .update({ ...orderData, updated_at: new Date().toISOString() })
-          .eq('id', existingOrder.id);
-        orderId = existingOrder.id;
+    // Sync orders if requested
+    if (syncType === 'full' || syncType === 'orders') {
+      let dateFrom: string | undefined;
+      if (!fullSync && integration.last_sync_at) {
+        dateFrom = integration.last_sync_at;
       } else {
-        const { data: newOrder } = await supabaseAdmin
-          .from('orders')
-          .insert(orderData)
-          .select('id')
-          .single();
-        orderId = newOrder?.id || '';
-        ordersInserted++;
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        dateFrom = ninetyDaysAgo.toISOString();
       }
 
-      // Process order items
-      if (orderId && order.order_items) {
-        for (const item of order.order_items) {
-          const { data: existingItem } = await supabaseAdmin
-            .from('order_items')
-            .select('id')
-            .eq('order_id', orderId)
-            .eq('ml_item_id', item.item.id)
-            .single();
+      console.log('[ML Sync] Fetching orders from:', dateFrom);
+      const mlOrders = await fetchMLOrders(accessToken, integration.ml_user_id, dateFrom);
+      console.log('[ML Sync] Fetched', mlOrders.length, 'orders');
 
-          if (!existingItem) {
-            await supabaseAdmin
+      for (const mlOrder of mlOrders) {
+        const order = mlOrder as {
+          id: number;
+          date_created: string;
+          status: string;
+          total_amount: number;
+          coupon?: { amount: number };
+          order_items?: Array<{
+            item: { id: string; title: string; seller_sku?: string };
+            quantity: number;
+            unit_price: number;
+            sale_fee?: number;
+          }>;
+          buyer?: { nickname: string };
+        };
+
+        const { data: existingOrder } = await supabaseAdmin
+          .from('orders')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('order_id_ml', String(order.id))
+          .single();
+
+        const orderData = {
+          user_id: userId,
+          order_id_ml: String(order.id),
+          date_created: order.date_created,
+          status: order.status === 'paid' ? 'paid' : 
+                  order.status === 'shipped' ? 'shipped' : 
+                  order.status === 'delivered' ? 'delivered' :
+                  order.status === 'cancelled' ? 'cancelled' : 'paid',
+          gross_total: order.total_amount || 0,
+          discounts_total: order.coupon?.amount || 0,
+          shipping_total: 0,
+          shipping_seller: 0,
+          fees_total: 0,
+          fee_discount_total: 0,
+          taxes_total: 0,
+          ads_total: 0,
+          packaging_cost: 0,
+          processing_cost: 0,
+          buyer_nickname: order.buyer?.nickname || null,
+        };
+
+        let totalFees = 0;
+        if (order.order_items) {
+          for (const item of order.order_items) {
+            totalFees += item.sale_fee || 0;
+          }
+        }
+        orderData.fees_total = totalFees;
+
+        let orderId: string;
+        if (existingOrder) {
+          await supabaseAdmin
+            .from('orders')
+            .update({ ...orderData, updated_at: new Date().toISOString() })
+            .eq('id', existingOrder.id);
+          orderId = existingOrder.id;
+        } else {
+          const { data: newOrder } = await supabaseAdmin
+            .from('orders')
+            .insert(orderData)
+            .select('id')
+            .single();
+          orderId = newOrder?.id || '';
+          ordersInserted++;
+        }
+
+        if (orderId && order.order_items) {
+          for (const item of order.order_items) {
+            const { data: existingItem } = await supabaseAdmin
               .from('order_items')
-              .insert({
-                user_id: userId,
-                order_id: orderId,
-                ml_item_id: item.item.id,
-                product_name: item.item.title,
-                sku: item.item.seller_sku || null,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
-                unit_discount: 0,
-                unit_cost: 0, // User needs to set this in products
-              });
-            itemsInserted++;
+              .select('id')
+              .eq('order_id', orderId)
+              .eq('ml_item_id', item.item.id)
+              .single();
+
+            if (!existingItem) {
+              await supabaseAdmin
+                .from('order_items')
+                .insert({
+                  user_id: userId,
+                  order_id: orderId,
+                  ml_item_id: item.item.id,
+                  product_name: item.item.title,
+                  sku: item.item.seller_sku || null,
+                  quantity: item.quantity,
+                  unit_price: item.unit_price,
+                  unit_discount: 0,
+                  unit_cost: 0,
+                });
+              itemsInserted++;
+            }
           }
         }
       }
     }
 
-    // Fetch and sync products
-    console.log('[ML Sync] Fetching products...');
-    const mlProducts = await fetchMLProducts(accessToken, integration.ml_user_id);
-    console.log('[ML Sync] Fetched', mlProducts.length, 'products');
+    // Sync listings if requested
+    if (syncType === 'full' || syncType === 'listings') {
+      console.log('[ML Sync] Fetching listings...');
+      const mlListings = await fetchMLListings(accessToken, integration.ml_user_id);
+      console.log('[ML Sync] Processing', mlListings.length, 'listings...');
 
-    let productsInserted = 0;
-    for (const mlProduct of mlProducts) {
-      const product = mlProduct as {
-        id: string;
-        title: string;
-        seller_custom_field?: string;
-        category_id: string;
-        price: number;
-        available_quantity: number;
-        status: string;
-      };
+      for (const mlListing of mlListings) {
+        const listing = mlListing as {
+          id: string;
+          title: string;
+          status: string;
+          sub_status?: string[];
+          price: number;
+          original_price?: number;
+          available_quantity: number;
+          sold_quantity: number;
+          listing_type_id: string;
+          shipping?: { free_shipping?: boolean; logistic_type?: string };
+          condition: string;
+          category_id: string;
+          site_id: string;
+          permalink: string;
+          thumbnail: string;
+          variations?: Array<{
+            id: number;
+            price: number;
+            available_quantity: number;
+            sold_quantity: number;
+            seller_custom_field?: string;
+            attribute_combinations?: Array<{ id: string; name: string; value_name: string }>;
+          }>;
+          date_created: string;
+          last_updated: string;
+          seller_custom_field?: string;
+        };
 
-      // Check if product exists by ml_item_id
-      const { data: existingProduct } = await supabaseAdmin
-        .from('products')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('ml_item_id', product.id)
-        .single();
-
-      if (!existingProduct) {
-        // Create product if it doesn't exist
-        const sku = product.seller_custom_field || `ML-${product.id}`;
-        
-        const { data: newProduct } = await supabaseAdmin
-          .from('products')
-          .insert({
-            user_id: userId,
-            ml_item_id: product.id,
-            sku: sku,
-            name: product.title,
-            category: 'Mercado Livre',
-            cost_unit: 0, // User needs to set this
-          })
-          .select('id')
-          .single();
-
-        if (newProduct) {
-          // Create inventory record
-          await supabaseAdmin
-            .from('inventory')
-            .insert({
-              user_id: userId,
-              product_id: newProduct.id,
-              available: product.available_quantity || 0,
-              reserved: 0,
-              min_stock: 10,
-            });
-          productsInserted++;
-        }
-      } else {
-        // Update inventory
-        const { data: existingInventory } = await supabaseAdmin
-          .from('inventory')
+        const { data: existingListing } = await supabaseAdmin
+          .from('ml_listings')
           .select('id')
           .eq('user_id', userId)
-          .eq('product_id', existingProduct.id)
+          .eq('item_id', listing.id)
           .single();
 
-        if (existingInventory) {
+        const listingData = {
+          user_id: userId,
+          item_id: listing.id,
+          title: listing.title,
+          status: listing.status,
+          substatus: listing.sub_status?.join(', ') || null,
+          price: listing.price || 0,
+          original_price: listing.original_price || null,
+          available_quantity: listing.available_quantity || 0,
+          sold_quantity: listing.sold_quantity || 0,
+          listing_type: listing.listing_type_id,
+          logistic_type: listing.shipping?.logistic_type || null,
+          condition: listing.condition,
+          category_id: listing.category_id,
+          site_id: listing.site_id,
+          permalink: listing.permalink,
+          thumbnail: listing.thumbnail,
+          free_shipping: listing.shipping?.free_shipping || false,
+          has_variations: (listing.variations?.length || 0) > 0,
+          ml_created_at: listing.date_created,
+          ml_updated_at: listing.last_updated,
+        };
+
+        let listingId: string;
+        if (existingListing) {
           await supabaseAdmin
-            .from('inventory')
-            .update({ 
-              available: product.available_quantity || 0,
-              updated_at: new Date().toISOString(),
+            .from('ml_listings')
+            .update({ ...listingData, updated_at: new Date().toISOString() })
+            .eq('id', existingListing.id);
+          listingId = existingListing.id;
+          listingsUpdated++;
+        } else {
+          const { data: newListing } = await supabaseAdmin
+            .from('ml_listings')
+            .insert(listingData)
+            .select('id')
+            .single();
+          listingId = newListing?.id || '';
+          listingsInserted++;
+        }
+
+        // Process variations
+        if (listingId && listing.variations && listing.variations.length > 0) {
+          for (const variation of listing.variations) {
+            const { data: existingVariation } = await supabaseAdmin
+              .from('ml_listing_variations')
+              .select('id')
+              .eq('listing_id', listingId)
+              .eq('variation_id', String(variation.id))
+              .single();
+
+            const variationData = {
+              user_id: userId,
+              listing_id: listingId,
+              variation_id: String(variation.id),
+              sku: variation.seller_custom_field || null,
+              attributes: variation.attribute_combinations || [],
+              price: variation.price || listing.price,
+              available_quantity: variation.available_quantity || 0,
+              sold_quantity: variation.sold_quantity || 0,
+            };
+
+            if (existingVariation) {
+              await supabaseAdmin
+                .from('ml_listing_variations')
+                .update({ ...variationData, updated_at: new Date().toISOString() })
+                .eq('id', existingVariation.id);
+            } else {
+              await supabaseAdmin
+                .from('ml_listing_variations')
+                .insert(variationData);
+              variationsInserted++;
+            }
+          }
+        }
+
+        // Also create/update product record for cost tracking
+        const { data: existingProduct } = await supabaseAdmin
+          .from('products')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('ml_item_id', listing.id)
+          .single();
+
+        if (!existingProduct) {
+          const sku = listing.seller_custom_field || `ML-${listing.id}`;
+          
+          const { data: newProduct } = await supabaseAdmin
+            .from('products')
+            .insert({
+              user_id: userId,
+              ml_item_id: listing.id,
+              sku: sku,
+              name: listing.title,
+              category: 'Mercado Livre',
+              cost_unit: 0,
             })
-            .eq('id', existingInventory.id);
+            .select('id')
+            .single();
+
+          if (newProduct) {
+            await supabaseAdmin
+              .from('inventory')
+              .insert({
+                user_id: userId,
+                product_id: newProduct.id,
+                available: listing.available_quantity || 0,
+                reserved: 0,
+                min_stock: 10,
+              });
+          }
+        } else {
+          // Update inventory
+          const { data: existingInventory } = await supabaseAdmin
+            .from('inventory')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('product_id', existingProduct.id)
+            .single();
+
+          if (existingInventory) {
+            await supabaseAdmin
+              .from('inventory')
+              .update({ 
+                available: listing.available_quantity || 0,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existingInventory.id);
+          }
         }
       }
     }
@@ -477,7 +571,7 @@ serve(async (req) => {
       .eq('id', integration.id);
 
     // Complete sync log
-    const totalRecords = ordersInserted + itemsInserted + productsInserted;
+    const totalRecords = ordersInserted + itemsInserted + listingsInserted + listingsUpdated + variationsInserted;
     await supabaseAdmin
       .from('sync_logs')
       .update({
@@ -487,10 +581,26 @@ serve(async (req) => {
       })
       .eq('id', syncLog?.id);
 
+    // Calculate summary stats
+    const { data: listingStats } = await supabaseAdmin
+      .from('ml_listings')
+      .select('status, available_quantity')
+      .eq('user_id', userId);
+
+    const summary = {
+      total_listings: listingStats?.length || 0,
+      active: listingStats?.filter(l => l.status === 'active').length || 0,
+      paused: listingStats?.filter(l => l.status === 'paused').length || 0,
+      with_stock: listingStats?.filter(l => l.available_quantity > 0).length || 0,
+      without_stock: listingStats?.filter(l => l.available_quantity === 0).length || 0,
+    };
+
     console.log('[ML Sync] Sync completed:', {
       orders: ordersInserted,
       items: itemsInserted,
-      products: productsInserted,
+      listings_new: listingsInserted,
+      listings_updated: listingsUpdated,
+      variations: variationsInserted,
     });
 
     return new Response(
@@ -500,10 +610,11 @@ serve(async (req) => {
         stats: {
           orders_synced: ordersInserted,
           items_synced: itemsInserted,
-          products_synced: productsInserted,
-          total_orders_fetched: mlOrders.length,
-          total_products_fetched: mlProducts.length,
+          listings_new: listingsInserted,
+          listings_updated: listingsUpdated,
+          variations_synced: variationsInserted,
         },
+        summary,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

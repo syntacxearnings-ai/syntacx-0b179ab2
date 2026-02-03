@@ -2,7 +2,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   ShoppingCart, 
-  Package, 
+  Package,
+  Tag,
   DollarSign, 
   Target, 
   Calculator, 
@@ -21,6 +22,7 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/orders', label: 'Pedidos', icon: ShoppingCart },
   { path: '/products', label: 'Produtos & Estoque', icon: Package },
+  { path: '/listings', label: 'Anúncios', icon: Tag },
   { path: '/costs', label: 'Custos', icon: DollarSign },
   { path: '/goals', label: 'Metas', icon: Target },
   { path: '/calculator', label: 'Precificação', icon: Calculator },

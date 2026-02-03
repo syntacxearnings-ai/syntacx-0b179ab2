@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,8 +22,36 @@ export default function Integrations() {
   const [showMlConnect, setShowMlConnect] = useState(false);
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
   const { integration, isConnected, isLoading, disconnect, isDisconnecting } = useIntegration();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const err = searchParams.get('ml_error');
+    const desc = searchParams.get('ml_error_description');
+    const success = searchParams.get('ml_success');
+
+    if (success === '1') {
+      toast({
+        title: 'Conectado',
+        description: 'Integração com Mercado Livre conectada com sucesso',
+      });
+      searchParams.delete('ml_success');
+      setSearchParams(searchParams, { replace: true });
+      return;
+    }
+
+    if (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Falha no OAuth',
+        description: desc ? `${err}: ${desc}` : err,
+      });
+      searchParams.delete('ml_error');
+      searchParams.delete('ml_error_description');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, toast]);
 
   const handleConnect = () => {
     if (!clientId || !clientSecret) {
@@ -42,6 +71,7 @@ export default function Integrations() {
     sessionStorage.setItem('ml_oauth_state', state);
     sessionStorage.setItem('ml_client_id', clientId);
     sessionStorage.setItem('ml_client_secret', clientSecret);
+    sessionStorage.setItem('ml_redirect_uri', redirectUri);
 
     // Redirect to Mercado Livre OAuth - scope is REQUIRED
     const authUrl = new URL('https://auth.mercadolivre.com.br/authorization');
@@ -49,7 +79,12 @@ export default function Integrations() {
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('state', state);
-    authUrl.searchParams.set('scope', 'offline_access read write');
+    // Never send read/write scopes here.
+    // Option A (recommended): do not send scope at all.
+    // If you ever need refresh_token explicitly, you can add: scope=offline_access
+
+    console.log('[ML OAuth] authorize_url', authUrl.toString());
+    console.log('[ML OAuth] redirect_uri(authorize)', redirectUri);
 
     window.location.href = authUrl.toString();
   };

@@ -36,7 +36,9 @@ export default function Products() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [showEditProduct, setShowEditProduct] = useState(false);
   const [showMovement, setShowMovement] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<{ id: string; sku: string; name: string; category: string; cost_unit: number; min_stock: number } | null>(null);
   const [movementForm, setMovementForm] = useState({ product_id: '', movement_type: 'entry' as 'entry' | 'exit' | 'adjustment', quantity: 0, note: '' });
   const [newProduct, setNewProduct] = useState<CreateProductInput>({ sku: '', name: '', category: 'Outros', cost_unit: 0 });
   const isMobile = useIsMobile();
@@ -52,7 +54,8 @@ export default function Products() {
     updateInventory,
     addMovement,
     isCreating, 
-    isDeleting 
+    isDeleting,
+    isUpdating,
   } = useProducts();
 
   const filteredProducts = productsWithInventory.filter(product => {
@@ -73,6 +76,42 @@ export default function Products() {
     createProduct(newProduct);
     setShowAddProduct(false);
     setNewProduct({ sku: '', name: '', category: 'Outros', cost_unit: 0 });
+  };
+
+  const handleEditProduct = (product: typeof productsWithInventory[0]) => {
+    setEditingProduct({
+      id: product.id,
+      sku: product.sku,
+      name: product.name,
+      category: product.category || 'Outros',
+      cost_unit: Number(product.cost_unit),
+      min_stock: product.inventory?.min_stock || 10,
+    });
+    setShowEditProduct(true);
+  };
+
+  const handleSaveProduct = () => {
+    if (!editingProduct) return;
+    
+    updateProduct({
+      id: editingProduct.id,
+      sku: editingProduct.sku,
+      name: editingProduct.name,
+      category: editingProduct.category,
+      cost_unit: editingProduct.cost_unit,
+    });
+
+    // Update inventory min_stock if changed
+    const existingProduct = productsWithInventory.find(p => p.id === editingProduct.id);
+    if (existingProduct?.inventory && existingProduct.inventory.min_stock !== editingProduct.min_stock) {
+      updateInventory({
+        id: existingProduct.inventory.id,
+        min_stock: editingProduct.min_stock,
+      });
+    }
+
+    setShowEditProduct(false);
+    setEditingProduct(null);
   };
 
   const handleAddMovement = () => {
@@ -273,7 +312,7 @@ export default function Products() {
                           >
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditProduct(product)}>
                             <Edit className="w-4 h-4 mr-1" />
                             Editar
                           </Button>
@@ -354,7 +393,7 @@ export default function Products() {
                             >
                               <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditProduct(product)}>
                               <Edit className="w-4 h-4" />
                             </Button>
                           </td>
@@ -548,6 +587,78 @@ export default function Products() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowMovement(false)}>Cancelar</Button>
             <Button onClick={handleAddMovement}>Registrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={showEditProduct} onOpenChange={(open) => { setShowEditProduct(open); if (!open) setEditingProduct(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Produto</DialogTitle>
+          </DialogHeader>
+          {editingProduct && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>SKU</Label>
+                <Input 
+                  placeholder="Ex: PROD-001" 
+                  value={editingProduct.sku}
+                  onChange={(e) => setEditingProduct(prev => prev ? { ...prev, sku: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Nome do Produto</Label>
+                <Input 
+                  placeholder="Nome do produto" 
+                  value={editingProduct.name}
+                  onChange={(e) => setEditingProduct(prev => prev ? { ...prev, name: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Select 
+                  value={editingProduct.category}
+                  onValueChange={(v) => setEditingProduct(prev => prev ? { ...prev, category: v } : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Custo Unitário (R$)</Label>
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="0,00" 
+                  value={editingProduct.cost_unit || ''}
+                  onChange={(e) => setEditingProduct(prev => prev ? { ...prev, cost_unit: parseFloat(e.target.value) || 0 } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Estoque Mínimo</Label>
+                <Input 
+                  type="number"
+                  placeholder="10" 
+                  value={editingProduct.min_stock || ''}
+                  onChange={(e) => setEditingProduct(prev => prev ? { ...prev, min_stock: parseInt(e.target.value) || 0 } : null)}
+                />
+                <p className="text-xs text-muted-foreground">Alerta quando o estoque atingir esse valor</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowEditProduct(false); setEditingProduct(null); }}>Cancelar</Button>
+            <Button onClick={handleSaveProduct} disabled={isUpdating}>
+              {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Salvar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

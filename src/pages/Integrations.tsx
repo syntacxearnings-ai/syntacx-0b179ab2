@@ -13,11 +13,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Link2, ShoppingBag, CheckCircle2, AlertCircle, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
+import { Link2, ShoppingBag, CheckCircle2, AlertCircle, RefreshCw, ExternalLink, Loader2, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIntegration } from '@/hooks/useIntegration';
+import { useSync } from '@/hooks/useSync';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function Integrations() {
   const [showMlConnect, setShowMlConnect] = useState(false);
@@ -25,6 +28,7 @@ export default function Integrations() {
   const [clientSecret, setClientSecret] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const { integration, isConnected, isLoading, disconnect, isDisconnecting } = useIntegration();
+  const { sync, status, progress, isLoading: isSyncing } = useSync();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -131,6 +135,35 @@ export default function Integrations() {
     });
   };
 
+  const handleSync = () => {
+    sync(false);
+  };
+
+  const getSyncButtonText = () => {
+    if (isSyncing) {
+      return progress || 'Sincronizando...';
+    }
+    if (status === 'completed') {
+      return 'Sincronizado!';
+    }
+    if (status === 'error') {
+      return 'Falhou - Tentar novamente';
+    }
+    return 'Sincronizar';
+  };
+
+  const getLastSyncText = () => {
+    if (!integration?.last_sync_at) return 'Nunca sincronizado';
+    try {
+      return formatDistanceToNow(new Date(integration.last_sync_at), { 
+        addSuffix: true, 
+        locale: ptBR 
+      });
+    } catch {
+      return 'Data inválida';
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader 
@@ -180,9 +213,22 @@ export default function Integrations() {
               </div>
               {isConnected ? (
                 <div className="flex gap-2 flex-wrap">
-                  <Button variant="outline" size="sm">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Sincronizar
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className={cn(
+                      status === 'completed' && 'border-success text-success',
+                      status === 'error' && 'border-destructive text-destructive'
+                    )}
+                  >
+                    {isSyncing ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className={cn("w-4 h-4 mr-2", status === 'completed' && 'text-success')} />
+                    )}
+                    {getSyncButtonText()}
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -217,11 +263,12 @@ export default function Integrations() {
                   <p className="text-xs text-muted-foreground">Site</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-lg sm:text-2xl font-bold">
-                    {integration.last_sync_at 
-                      ? new Date(integration.last_sync_at).toLocaleDateString('pt-BR')
-                      : 'Nunca'}
-                  </p>
+                  <div className="flex items-center justify-center gap-1">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-sm sm:text-base font-medium">
+                      {getLastSyncText()}
+                    </p>
+                  </div>
                   <p className="text-xs text-muted-foreground">Última Sincronização</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted/50">
@@ -229,6 +276,19 @@ export default function Integrations() {
                   <p className="text-xs text-muted-foreground">Status</p>
                 </div>
               </div>
+
+              {/* Sync Progress */}
+              {isSyncing && progress && (
+                <div className="mt-4 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                    <div>
+                      <p className="font-medium text-sm">{progress}</p>
+                      <p className="text-xs text-muted-foreground">Isso pode levar alguns minutos...</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           )}
         </Card>

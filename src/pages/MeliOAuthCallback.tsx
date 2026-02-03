@@ -69,9 +69,9 @@ export default function MeliOAuthCallback() {
 
       const clientId = sessionStorage.getItem("ml_client_id") || "";
       const clientSecret = sessionStorage.getItem("ml_client_secret") || "";
-      const redirectUri =
-        sessionStorage.getItem("ml_redirect_uri") ||
-        `${window.location.origin}/api/integrations/meli/callback`;
+      // CRITICAL: Must be EXACTLY the same as used in authorize AND registered in ML Developers
+      const REGISTERED_REDIRECT_URI = 'https://289fa9d9-b6c0-4489-93d0-bad81c3761bb.lovableproject.com/api/integrations/meli/callback';
+      const redirectUri = sessionStorage.getItem("ml_redirect_uri") || REGISTERED_REDIRECT_URI;
 
       if (!clientId || !clientSecret) {
         console.error("[ML OAuth] missing_client_credentials");
@@ -99,9 +99,10 @@ export default function MeliOAuthCallback() {
       const fnBaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const fnUrl = `${fnBaseUrl}/functions/v1/meli-oauth-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
 
-      console.log("[ML OAuth] redirect_uri(authorize)", redirectUri);
-      console.log("[ML OAuth] redirect_uri(token_exchange)", redirectUri);
-      console.log("[ML OAuth] calling_function", fnUrl);
+      console.log("[ML OAuth] ===== TOKEN EXCHANGE =====");
+      console.log("[ML OAuth] redirect_uri (token_exchange):", redirectUri);
+      console.log("[ML OAuth] client_id:", clientId ? "present" : "MISSING");
+      console.log("[ML OAuth] calling edge function:", fnUrl);
 
       const res = await fetch(fnUrl, {
         method: "POST",

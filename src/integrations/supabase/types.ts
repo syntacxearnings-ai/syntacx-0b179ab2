@@ -213,6 +213,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_settings: {
+        Row: {
+          created_at: string
+          daily_summary: boolean
+          goal_progress_alert: boolean
+          id: string
+          low_stock_alert: boolean
+          negative_margin_alert: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_summary?: boolean
+          goal_progress_alert?: boolean
+          id?: string
+          low_stock_alert?: boolean
+          negative_margin_alert?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_summary?: boolean
+          goal_progress_alert?: boolean
+          id?: string
+          low_stock_alert?: boolean
+          negative_margin_alert?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       oauth_states: {
         Row: {
           client_id: string
@@ -405,6 +438,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          timezone: string | null
           updated_at: string
           user_id: string
         }
@@ -414,6 +448,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          timezone?: string | null
           updated_at?: string
           user_id: string
         }
@@ -423,6 +458,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          timezone?: string | null
           updated_at?: string
           user_id?: string
         }

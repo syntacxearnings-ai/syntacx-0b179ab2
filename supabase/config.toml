@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.meli-refresh-token]
 verify_jwt = false
+
+[functions.meli-sync]
+verify_jwt = false

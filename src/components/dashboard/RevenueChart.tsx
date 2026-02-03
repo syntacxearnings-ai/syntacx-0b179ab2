@@ -9,17 +9,17 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { Order } from '@/lib/types';
+import { Order, FixedCost } from '@/lib/types';
 import { calculateNetProfit } from '@/lib/profitCalculator';
-import { mockFixedCosts } from '@/lib/mockData';
 import { formatCurrency } from '@/lib/formatters';
 
 interface RevenueChartProps {
   orders: Order[];
+  fixedCosts: FixedCost[];
   daysBack?: number;
 }
 
-export function RevenueChart({ orders, daysBack = 30 }: RevenueChartProps) {
+export function RevenueChart({ orders, fixedCosts, daysBack = 30 }: RevenueChartProps) {
   const chartData = useMemo(() => {
     const data: Record<string, { date: string; revenue: number; profit: number; orders: number }> = {};
     
@@ -40,7 +40,7 @@ export function RevenueChart({ orders, daysBack = 30 }: RevenueChartProps) {
     validOrders.forEach(order => {
       const key = order.date.toISOString().split('T')[0];
       if (data[key]) {
-        const breakdown = calculateNetProfit(order, mockFixedCosts, validOrders.length);
+        const breakdown = calculateNetProfit(order, fixedCosts, validOrders.length);
         data[key].revenue += breakdown.netRevenue;
         data[key].profit += breakdown.netProfit;
         data[key].orders += 1;
@@ -55,7 +55,7 @@ export function RevenueChart({ orders, daysBack = 30 }: RevenueChartProps) {
         revenue: Math.round(d.revenue * 100) / 100,
         profit: Math.round(d.profit * 100) / 100,
       }));
-  }, [orders, daysBack]);
+  }, [orders, fixedCosts, daysBack]);
 
   return (
     <div className="chart-container">

@@ -14,6 +14,157 @@ export type Database = {
   }
   public: {
     Tables: {
+      fixed_costs: {
+        Row: {
+          amount_monthly: number
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_monthly?: number
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_monthly?: number
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      goals: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          margin_goal: number
+          orders_goal: number
+          period: string
+          profit_goal: number
+          revenue_goal: number
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          margin_goal?: number
+          orders_goal?: number
+          period: string
+          profit_goal?: number
+          revenue_goal?: number
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          margin_goal?: number
+          orders_goal?: number
+          period?: string
+          profit_goal?: number
+          revenue_goal?: number
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      inventory: {
+        Row: {
+          available: number
+          id: string
+          min_stock: number
+          product_id: string | null
+          reserved: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available?: number
+          id?: string
+          min_stock?: number
+          product_id?: string | null
+          reserved?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available?: number
+          id?: string
+          min_stock?: number
+          product_id?: string | null
+          reserved?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          id: string
+          movement_type: string
+          note: string | null
+          product_id: string | null
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          movement_type: string
+          note?: string | null
+          product_id?: string | null
+          quantity: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          movement_type?: string
+          note?: string | null
+          product_id?: string | null
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercadolivre_integrations: {
         Row: {
           access_token: string
@@ -62,6 +213,155 @@ export type Database = {
         }
         Relationships: []
       }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          ml_item_id: string | null
+          order_id: string | null
+          product_name: string
+          quantity: number
+          sku: string | null
+          unit_cost: number
+          unit_discount: number
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ml_item_id?: string | null
+          order_id?: string | null
+          product_name: string
+          quantity?: number
+          sku?: string | null
+          unit_cost?: number
+          unit_discount?: number
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ml_item_id?: string | null
+          order_id?: string | null
+          product_name?: string
+          quantity?: number
+          sku?: string | null
+          unit_cost?: number
+          unit_discount?: number
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          ads_total: number
+          buyer_nickname: string | null
+          created_at: string
+          date_created: string
+          discounts_total: number
+          fee_discount_total: number
+          fees_total: number
+          gross_total: number
+          id: string
+          order_id_ml: string
+          packaging_cost: number
+          processing_cost: number
+          shipping_seller: number
+          shipping_total: number
+          status: string
+          taxes_total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ads_total?: number
+          buyer_nickname?: string | null
+          created_at?: string
+          date_created: string
+          discounts_total?: number
+          fee_discount_total?: number
+          fees_total?: number
+          gross_total?: number
+          id?: string
+          order_id_ml: string
+          packaging_cost?: number
+          processing_cost?: number
+          shipping_seller?: number
+          shipping_total?: number
+          status?: string
+          taxes_total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ads_total?: number
+          buyer_nickname?: string | null
+          created_at?: string
+          date_created?: string
+          discounts_total?: number
+          fee_discount_total?: number
+          fees_total?: number
+          gross_total?: number
+          id?: string
+          order_id_ml?: string
+          packaging_cost?: number
+          processing_cost?: number
+          shipping_seller?: number
+          shipping_total?: number
+          status?: string
+          taxes_total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          category: string | null
+          cost_unit: number
+          created_at: string
+          id: string
+          ml_item_id: string | null
+          name: string
+          sku: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          cost_unit?: number
+          created_at?: string
+          id?: string
+          ml_item_id?: string | null
+          name: string
+          sku: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          cost_unit?: number
+          created_at?: string
+          id?: string
+          ml_item_id?: string | null
+          name?: string
+          sku?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -87,6 +387,75 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sync_logs: {
+        Row: {
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          records_synced: number | null
+          started_at: string
+          status: string
+          sync_type: string
+          user_id: string
+        }
+        Insert: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          records_synced?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+          user_id: string
+        }
+        Update: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          records_synced?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      variable_costs_config: {
+        Row: {
+          ads_percentage: number
+          created_at: string
+          id: string
+          packaging_per_item: number
+          packaging_per_order: number
+          processing_per_order: number
+          tax_percentage: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ads_percentage?: number
+          created_at?: string
+          id?: string
+          packaging_per_item?: number
+          packaging_per_order?: number
+          processing_per_order?: number
+          tax_percentage?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ads_percentage?: number
+          created_at?: string
+          id?: string
+          packaging_per_item?: number
+          packaging_per_order?: number
+          processing_per_order?: number
+          tax_percentage?: number
           updated_at?: string
           user_id?: string
         }

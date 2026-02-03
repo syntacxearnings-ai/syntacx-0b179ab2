@@ -1,25 +1,25 @@
 import { useState, useMemo } from 'react';
 import { Eye, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
-import { Order, ProfitBreakdown } from '@/lib/types';
+import { Order, FixedCost } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency, formatDate, getStatusColor, statusLabels } from '@/lib/formatters';
 import { calculateNetProfit } from '@/lib/profitCalculator';
-import { mockFixedCosts } from '@/lib/mockData';
 import { ProfitBreakdownPanel } from './ProfitBreakdownPanel';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface OrdersTableProps {
   orders: Order[];
+  fixedCosts: FixedCost[];
   onViewOrder?: (order: Order) => void;
 }
 
 type SortField = 'date' | 'grossTotal' | 'netProfit';
 type SortDirection = 'asc' | 'desc';
 
-export function OrdersTable({ orders, onViewOrder }: OrdersTableProps) {
+export function OrdersTable({ orders, fixedCosts, onViewOrder }: OrdersTableProps) {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -32,9 +32,9 @@ export function OrdersTable({ orders, onViewOrder }: OrdersTableProps) {
     
     return orders.map(order => ({
       order,
-      breakdown: calculateNetProfit(order, mockFixedCosts, validOrdersCount),
+      breakdown: calculateNetProfit(order, fixedCosts, validOrdersCount),
     }));
-  }, [orders]);
+  }, [orders, fixedCosts]);
 
   const sortedOrders = useMemo(() => {
     return [...ordersWithProfit].sort((a, b) => {

@@ -9,10 +9,11 @@ import { TopProductsChart } from '@/components/dashboard/TopProductsChart';
 import { OrdersTable } from '@/components/dashboard/OrdersTable';
 import { ProfitBreakdownPanel } from '@/components/dashboard/ProfitBreakdownPanel';
 import { EmptyState } from '@/components/ui/empty-state';
-import { mockOrders, mockFixedCosts } from '@/lib/mockData';
 import { calculateAggregatedMetrics } from '@/lib/profitCalculator';
-import { DashboardFilters } from '@/lib/types';
+import { DashboardFilters, FixedCost } from '@/lib/types';
 import { useIntegration } from '@/hooks/useIntegration';
+import { useOrders } from '@/hooks/useOrders';
+import { useCosts, FixedCost as DbFixedCost } from '@/hooks/useCosts';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -23,16 +24,32 @@ import {
   Truck,
   ArrowDownRight,
   RotateCcw,
-  Link2
+  Link2,
+  Loader2
 } from 'lucide-react';
+
+// Transform DB fixed costs to app format
+function transformFixedCosts(dbCosts: DbFixedCost[]): FixedCost[] {
+  return dbCosts.map(cost => ({
+    id: cost.id,
+    name: cost.name,
+    category: cost.category,
+    amountMonthly: Number(cost.amount_monthly),
+    createdAt: new Date(cost.created_at),
+  }));
+}
 
 export default function Dashboard() {
   const [filters, setFilters] = useState<DashboardFilters>({ period: 'month' });
   const { isConnected, isLoading: isLoadingIntegration } = useIntegration();
+  const { orders, isLoading: isLoadingOrders } = useOrders();
+  const { fixedCosts: dbFixedCosts, isLoading: isLoadingCosts } = useCosts();
   const navigate = useNavigate();
 
+  const fixedCosts = useMemo(() => transformFixedCosts(dbFixedCosts), [dbFixedCosts]);
+
   const filteredOrders = useMemo(() => {
-    let orders = [...mockOrders];
+    let filtered = [...orders];
 
     const now = new Date();
     let startDate: Date;
@@ -50,14 +67,14 @@ export default function Dashboard() {
         break;
     }
 
-    orders = orders.filter(o => o.date >= startDate);
+    filtered = filtered.filter(o => o.date >= startDate);
 
     if (filters.status?.length) {
-      orders = orders.filter(o => filters.status!.includes(o.status));
+      filtered = filtered.filter(o => filters.status!.includes(o.status));
     }
 
     if (filters.category) {
-      orders = orders.filter(o => 
+      filtered = filtered.filter(o => 
         o.items.some(item => {
           const name = item.productName.toLowerCase();
           if (filters.category === 'Eletrônicos') {
@@ -75,20 +92,37 @@ export default function Dashboard() {
     }
 
     if (filters.sku) {
-      orders = orders.filter(o => 
+      filtered = filtered.filter(o => 
         o.items.some(item => item.sku.toLowerCase().includes(filters.sku!.toLowerCase()))
       );
     }
 
-    return orders;
-  }, [filters]);
+    return filtered;
+  }, [orders, filters]);
 
   const metrics = useMemo(() => {
-    return calculateAggregatedMetrics(filteredOrders, mockFixedCosts);
-  }, [filteredOrders]);
+    return calculateAggregatedMetrics(filteredOrders, fixedCosts);
+  }, [filteredOrders, fixedCosts]);
+
+  const isLoading = isLoadingIntegration || isLoadingOrders || isLoadingCosts;
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader 
+          title="Dashboard"
+          description="Visão executiva do seu negócio no Mercado Livre"
+        />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   // Show empty state if not connected
-  if (!isLoadingIntegration && !isConnected) {
+  if (!isConnected) {
     return (
       <div className="space-y-6 animate-fade-in">
         <PageHeader 
@@ -102,6 +136,29 @@ export default function Dashboard() {
           description="Para visualizar seus dados reais de vendas, pedidos e lucro, conecte sua conta do Mercado Livre."
           action={{
             label: 'Conectar Mercado Livre',
+            onClick: () => navigate('/integrations'),
+          }}
+          className="min-h-[400px] border rounded-xl bg-card"
+        />
+      </div>
+    );
+  }
+
+  // Show empty state if no orders
+  if (orders.length === 0) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader 
+          title="Dashboard"
+          description="Visão executiva do seu negócio no Mercado Livre"
+        />
+        
+        <EmptyState
+          icon={ShoppingCart}
+          title="Nenhum pedido sincronizado"
+          description="Sincronize seus pedidos do Mercado Livre para ver os dados do dashboard."
+          action={{
+            label: 'Ir para Integrações',
             onClick: () => navigate('/integrations'),
           }}
           className="min-h-[400px] border rounded-xl bg-card"
@@ -219,8 +276,8 @@ export default function Dashboard() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <RevenueChart orders={filteredOrders} daysBack={30} />
-        <MarginChart orders={filteredOrders} daysBack={30} />
+        <RevenueChart orders={filteredOrders} fixedCosts={fixedCosts} daysBack={30} />
+        <MarginChart orders={filteredOrders} fixedCosts={fixedCosts} daysBack={30} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -236,7 +293,7 @@ export default function Dashboard() {
         </div>
         <div className="lg:col-span-2">
           <h3 className="text-lg font-semibold mb-4">Pedidos Recentes</h3>
-          <OrdersTable orders={filteredOrders.slice(0, 20)} />
+          <OrdersTable orders={filteredOrders.slice(0, 20)} fixedCosts={fixedCosts} />
         </div>
       </div>
     </div>

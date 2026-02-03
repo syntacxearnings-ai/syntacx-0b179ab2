@@ -9,17 +9,17 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { Order } from '@/lib/types';
+import { Order, FixedCost } from '@/lib/types';
 import { calculateNetProfit } from '@/lib/profitCalculator';
-import { mockFixedCosts } from '@/lib/mockData';
 import { formatPercentage } from '@/lib/formatters';
 
 interface MarginChartProps {
   orders: Order[];
+  fixedCosts: FixedCost[];
   daysBack?: number;
 }
 
-export function MarginChart({ orders, daysBack = 30 }: MarginChartProps) {
+export function MarginChart({ orders, fixedCosts, daysBack = 30 }: MarginChartProps) {
   const chartData = useMemo(() => {
     const data: Record<string, { date: string; netRevenue: number; netProfit: number }> = {};
     
@@ -38,7 +38,7 @@ export function MarginChart({ orders, daysBack = 30 }: MarginChartProps) {
     validOrders.forEach(order => {
       const key = order.date.toISOString().split('T')[0];
       if (data[key]) {
-        const breakdown = calculateNetProfit(order, mockFixedCosts, validOrders.length);
+        const breakdown = calculateNetProfit(order, fixedCosts, validOrders.length);
         data[key].netRevenue += breakdown.netRevenue;
         data[key].netProfit += breakdown.netProfit;
       }
@@ -50,7 +50,7 @@ export function MarginChart({ orders, daysBack = 30 }: MarginChartProps) {
         date: new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
         margin: d.netRevenue > 0 ? (d.netProfit / d.netRevenue) * 100 : 0,
       }));
-  }, [orders, daysBack]);
+  }, [orders, fixedCosts, daysBack]);
 
   const avgMargin = useMemo(() => {
     const margins = chartData.filter(d => d.margin !== 0);

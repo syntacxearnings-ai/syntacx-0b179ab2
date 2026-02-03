@@ -41,24 +41,24 @@ export function MetricCard({
         className
       )}
     >
-      <div className="flex items-start justify-between mb-3">
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+      <div className="flex items-start justify-between mb-2 md:mb-3">
+        <p className="text-xs md:text-sm font-medium text-muted-foreground line-clamp-1">{title}</p>
         {Icon && (
           <div className={cn(
-            "w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
+            "w-7 h-7 md:w-9 md:h-9 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
             variant === 'profit' ? "bg-success/10 text-success" :
             variant === 'loss' ? "bg-destructive/10 text-destructive" :
             "bg-primary/10 text-primary"
           )}>
-            <Icon className="w-5 h-5" />
+            <Icon className="w-4 h-4 md:w-5 md:h-5" />
           </div>
         )}
       </div>
       
       <p className={cn(
-        "stat-value",
-        variant === 'profit' && "stat-value-profit",
-        variant === 'loss' && "stat-value-loss"
+        "text-lg md:text-2xl font-bold tracking-tight",
+        variant === 'profit' && "text-success",
+        variant === 'loss' && "text-destructive"
       )}>
         {formattedValue}
       </p>

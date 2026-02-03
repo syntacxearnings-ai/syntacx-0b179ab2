@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { DashboardFiltersBar } from '@/components/dashboard/DashboardFilters';
@@ -7,9 +8,11 @@ import { MarginChart } from '@/components/dashboard/MarginChart';
 import { TopProductsChart } from '@/components/dashboard/TopProductsChart';
 import { OrdersTable } from '@/components/dashboard/OrdersTable';
 import { ProfitBreakdownPanel } from '@/components/dashboard/ProfitBreakdownPanel';
+import { EmptyState } from '@/components/ui/empty-state';
 import { mockOrders, mockFixedCosts } from '@/lib/mockData';
 import { calculateAggregatedMetrics } from '@/lib/profitCalculator';
 import { DashboardFilters } from '@/lib/types';
+import { useIntegration } from '@/hooks/useIntegration';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -19,16 +22,18 @@ import {
   Receipt,
   Truck,
   ArrowDownRight,
-  RotateCcw
+  RotateCcw,
+  Link2
 } from 'lucide-react';
 
 export default function Dashboard() {
   const [filters, setFilters] = useState<DashboardFilters>({ period: 'month' });
+  const { isConnected, isLoading: isLoadingIntegration } = useIntegration();
+  const navigate = useNavigate();
 
   const filteredOrders = useMemo(() => {
     let orders = [...mockOrders];
 
-    // Filter by period
     const now = new Date();
     let startDate: Date;
 
@@ -47,16 +52,13 @@ export default function Dashboard() {
 
     orders = orders.filter(o => o.date >= startDate);
 
-    // Filter by status
     if (filters.status?.length) {
       orders = orders.filter(o => filters.status!.includes(o.status));
     }
 
-    // Filter by category
     if (filters.category) {
       orders = orders.filter(o => 
         o.items.some(item => {
-          // Simplified category matching based on product name
           const name = item.productName.toLowerCase();
           if (filters.category === 'Eletrônicos') {
             return name.includes('fone') || name.includes('carregador') || name.includes('power') || name.includes('alto-falante');
@@ -72,7 +74,6 @@ export default function Dashboard() {
       );
     }
 
-    // Filter by SKU
     if (filters.sku) {
       orders = orders.filter(o => 
         o.items.some(item => item.sku.toLowerCase().includes(filters.sku!.toLowerCase()))
@@ -86,6 +87,29 @@ export default function Dashboard() {
     return calculateAggregatedMetrics(filteredOrders, mockFixedCosts);
   }, [filteredOrders]);
 
+  // Show empty state if not connected
+  if (!isLoadingIntegration && !isConnected) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader 
+          title="Dashboard"
+          description="Visão executiva do seu negócio no Mercado Livre"
+        />
+        
+        <EmptyState
+          icon={Link2}
+          title="Conecte sua conta do Mercado Livre"
+          description="Para visualizar seus dados reais de vendas, pedidos e lucro, conecte sua conta do Mercado Livre."
+          action={{
+            label: 'Conectar Mercado Livre',
+            onClick: () => navigate('/integrations'),
+          }}
+          className="min-h-[400px] border rounded-xl bg-card"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader 
@@ -97,7 +121,7 @@ export default function Dashboard() {
       <DashboardFiltersBar filters={filters} onFiltersChange={setFilters} />
 
       {/* KPI Cards - Row 1: Revenue & Costs */}
-      <div className="kpi-grid">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
         <MetricCard
           title="Faturamento Bruto"
           value={metrics.totals.grossRevenue}
@@ -116,12 +140,12 @@ export default function Dashboard() {
           icon={Package}
         />
         <MetricCard
-          title="Taxas ML (brutas)"
+          title="Taxas ML"
           value={metrics.totals.mlFeesGross}
           icon={Receipt}
         />
         <MetricCard
-          title="Desconto Taxas ML"
+          title="Desc. Taxas"
           value={metrics.totals.mlFeeDiscount}
           icon={Percent}
           variant="profit"
@@ -129,9 +153,9 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards - Row 2: More Costs */}
-      <div className="kpi-grid">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
         <MetricCard
-          title="Taxas ML (líquidas)"
+          title="Taxas Líquidas"
           value={metrics.totals.mlFeesNet}
           icon={Receipt}
         />
@@ -141,12 +165,12 @@ export default function Dashboard() {
           icon={Truck}
         />
         <MetricCard
-          title="Custos Variáveis"
+          title="Custos Var."
           value={metrics.totals.variableCosts}
           icon={Package}
         />
         <MetricCard
-          title="Custos Fixos (rateio)"
+          title="Custos Fixos"
           value={metrics.totals.fixedCostsAllocation}
           icon={Package}
         />
@@ -159,7 +183,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards - Row 3: Operations */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
         <MetricCard
           title="Margem Líquida"
           value={metrics.totals.netMarginPercent}
@@ -185,7 +209,7 @@ export default function Dashboard() {
           icon={DollarSign}
         />
         <MetricCard
-          title="Devoluções/Cancelamentos"
+          title="Devoluções"
           value={metrics.returns + metrics.cancellations}
           format="number"
           icon={RotateCcw}
@@ -194,18 +218,18 @@ export default function Dashboard() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <RevenueChart orders={filteredOrders} daysBack={30} />
         <MarginChart orders={filteredOrders} daysBack={30} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <TopProductsChart orders={filteredOrders} metric="profit" />
         <TopProductsChart orders={filteredOrders} metric="revenue" />
       </div>
 
       {/* Profit Breakdown Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         <div className="lg:col-span-1">
           <h3 className="text-lg font-semibold mb-4">Breakdown do Período</h3>
           <ProfitBreakdownPanel breakdown={metrics.totals} />

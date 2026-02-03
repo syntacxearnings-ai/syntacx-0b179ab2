@@ -47,11 +47,11 @@ export function DashboardFiltersBar({ filters, onFiltersChange }: DashboardFilte
   const hasActiveFilters = filters.status?.length || filters.category || filters.sku;
 
   return (
-    <div className="filter-bar">
-      <div className="flex items-center gap-3 flex-wrap">
+    <div className="filter-bar flex-col sm:flex-row">
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto">
         {/* Period Filter */}
         <Select value={filters.period} onValueChange={handlePeriodChange}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-full sm:w-[140px]">
             <Calendar className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Período" />
           </SelectTrigger>

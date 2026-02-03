@@ -287,7 +287,21 @@
 
   /* KPI grid */
   .kpi-grid {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4;
+    @apply grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4;
+  }
+
+  /* Responsive tables - becomes cards on mobile */
+  .responsive-table {
+    @apply hidden md:block;
+  }
+
+  .responsive-cards {
+    @apply block md:hidden space-y-3;
+  }
+
+  /* Mobile-optimized card */
+  .mobile-order-card {
+    @apply rounded-lg border border-border bg-card p-4 space-y-3;
   }
 }
 

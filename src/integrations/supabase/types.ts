@@ -213,6 +213,134 @@ export type Database = {
         }
         Relationships: []
       }
+      ml_listing_variations: {
+        Row: {
+          attributes: Json | null
+          available_quantity: number
+          created_at: string
+          id: string
+          listing_id: string
+          price: number
+          sku: string | null
+          sold_quantity: number
+          updated_at: string
+          user_id: string
+          variation_id: string
+        }
+        Insert: {
+          attributes?: Json | null
+          available_quantity?: number
+          created_at?: string
+          id?: string
+          listing_id: string
+          price?: number
+          sku?: string | null
+          sold_quantity?: number
+          updated_at?: string
+          user_id: string
+          variation_id: string
+        }
+        Update: {
+          attributes?: Json | null
+          available_quantity?: number
+          created_at?: string
+          id?: string
+          listing_id?: string
+          price?: number
+          sku?: string | null
+          sold_quantity?: number
+          updated_at?: string
+          user_id?: string
+          variation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ml_listing_variations_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "ml_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ml_listings: {
+        Row: {
+          available_quantity: number
+          category_id: string | null
+          condition: string | null
+          created_at: string
+          free_shipping: boolean | null
+          has_variations: boolean | null
+          id: string
+          item_id: string
+          listing_type: string | null
+          logistic_type: string | null
+          ml_created_at: string | null
+          ml_updated_at: string | null
+          original_price: number | null
+          permalink: string | null
+          price: number
+          site_id: string | null
+          sold_quantity: number
+          status: string
+          substatus: string | null
+          thumbnail: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available_quantity?: number
+          category_id?: string | null
+          condition?: string | null
+          created_at?: string
+          free_shipping?: boolean | null
+          has_variations?: boolean | null
+          id?: string
+          item_id: string
+          listing_type?: string | null
+          logistic_type?: string | null
+          ml_created_at?: string | null
+          ml_updated_at?: string | null
+          original_price?: number | null
+          permalink?: string | null
+          price?: number
+          site_id?: string | null
+          sold_quantity?: number
+          status?: string
+          substatus?: string | null
+          thumbnail?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available_quantity?: number
+          category_id?: string | null
+          condition?: string | null
+          created_at?: string
+          free_shipping?: boolean | null
+          has_variations?: boolean | null
+          id?: string
+          item_id?: string
+          listing_type?: string | null
+          logistic_type?: string | null
+          ml_created_at?: string | null
+          ml_updated_at?: string | null
+          original_price?: number | null
+          permalink?: string | null
+          price?: number
+          site_id?: string | null
+          sold_quantity?: number
+          status?: string
+          substatus?: string | null
+          thumbnail?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string

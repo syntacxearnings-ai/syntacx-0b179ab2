@@ -7,6 +7,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import Products from "./pages/Products";
+import Listings from "./pages/Listings";
 import Costs from "./pages/Costs";
 import Goals from "./pages/Goals";
 import Calculator from "./pages/Calculator";
@@ -69,10 +70,11 @@ function AppRoutes() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/products" element={<Products />} />
+        <Route path="/listings" element={<Listings />} />
         <Route path="/costs" element={<Costs />} />
         <Route path="/goals" element={<Goals />} />
         <Route path="/calculator" element={<Calculator />} />
-         {/* OAuth callback is now handled by edge function with redirect */}
+        {/* OAuth callback is now handled by edge function with redirect */}
         <Route path="/integrations" element={<Integrations />} />
         <Route path="/settings" element={<Settings />} />
       </Route>

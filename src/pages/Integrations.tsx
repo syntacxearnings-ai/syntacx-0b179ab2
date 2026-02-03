@@ -63,8 +63,10 @@ export default function Integrations() {
       return;
     }
 
-    // Build OAuth URL
-    const redirectUri = `${window.location.origin}/api/integrations/meli/callback`;
+    // IMPORTANT: redirect_uri MUST match EXACTLY what is registered in ML Developers.
+    // Using the preview domain since that's what's registered.
+    const REGISTERED_REDIRECT_URI = 'https://289fa9d9-b6c0-4489-93d0-bad81c3761bb.lovableproject.com/api/integrations/meli/callback';
+    const redirectUri = REGISTERED_REDIRECT_URI;
     const state = crypto.randomUUID();
     
     // Store state for verification
@@ -73,18 +75,20 @@ export default function Integrations() {
     sessionStorage.setItem('ml_client_secret', clientSecret);
     sessionStorage.setItem('ml_redirect_uri', redirectUri);
 
-    // Redirect to Mercado Livre OAuth - scope is REQUIRED
+    // Build OAuth URL - NO read/write scopes (they are invalid)
     const authUrl = new URL('https://auth.mercadolivre.com.br/authorization');
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('state', state);
-    // Never send read/write scopes here.
-    // Option A (recommended): do not send scope at all.
-    // If you ever need refresh_token explicitly, you can add: scope=offline_access
+    // Option: add scope=offline_access for refresh_token support
+    // authUrl.searchParams.set('scope', 'offline_access');
 
-    console.log('[ML OAuth] authorize_url', authUrl.toString());
-    console.log('[ML OAuth] redirect_uri(authorize)', redirectUri);
+    console.log('[ML OAuth] ===== AUTHORIZE =====');
+    console.log('[ML OAuth] authorize_url:', authUrl.toString());
+    console.log('[ML OAuth] redirect_uri (authorize):', redirectUri);
+    console.log('[ML OAuth] client_id:', clientId);
+    console.log('[ML OAuth] state:', state);
 
     window.location.href = authUrl.toString();
   };
@@ -267,7 +271,7 @@ export default function Integrations() {
                 <li>Crie uma nova aplicação</li>
                 <li>Copie o App ID (Client ID) e Secret</li>
                 <li>Configure a Redirect URI como:<br/>
-                  <code className="text-xs bg-muted p-1 rounded">{window.location.origin}/api/integrations/meli/callback</code>
+                  <code className="text-xs bg-muted p-1 rounded break-all">https://289fa9d9-b6c0-4489-93d0-bad81c3761bb.lovableproject.com/api/integrations/meli/callback</code>
                 </li>
               </ol>
             </div>

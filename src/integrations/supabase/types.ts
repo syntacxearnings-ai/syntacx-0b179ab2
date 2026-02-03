@@ -213,6 +213,42 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_states: {
+        Row: {
+          client_id: string
+          client_secret: string
+          created_at: string
+          expires_at: string
+          id: string
+          redirect_uri: string
+          state: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          client_secret: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          redirect_uri: string
+          state: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          client_secret?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          redirect_uri?: string
+          state?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string

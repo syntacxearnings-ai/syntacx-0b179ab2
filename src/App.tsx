@@ -11,7 +11,6 @@ import Costs from "./pages/Costs";
 import Goals from "./pages/Goals";
 import Calculator from "./pages/Calculator";
 import Integrations from "./pages/Integrations";
-import MeliOAuthCallback from "./pages/MeliOAuthCallback";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -73,7 +72,7 @@ function AppRoutes() {
         <Route path="/costs" element={<Costs />} />
         <Route path="/goals" element={<Goals />} />
         <Route path="/calculator" element={<Calculator />} />
-         <Route path="/api/integrations/meli/callback" element={<MeliOAuthCallback />} />
+         {/* OAuth callback is now handled by edge function with redirect */}
         <Route path="/integrations" element={<Integrations />} />
         <Route path="/settings" element={<Settings />} />
       </Route>

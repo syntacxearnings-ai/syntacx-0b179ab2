@@ -53,12 +53,13 @@ export function TopProductsChart({ orders, metric, limit = 10 }: TopProductsChar
       .slice(0, limit);
   }, [orders, metric, limit]);
 
+  // Purple scale colors
   const colors = [
-    'hsl(var(--chart-1))',
-    'hsl(var(--chart-2))',
-    'hsl(var(--chart-3))',
-    'hsl(var(--chart-4))',
-    'hsl(var(--chart-5))',
+    'hsl(256, 87%, 60%)',   // Primary purple
+    'hsl(256, 70%, 70%)',   // Lighter
+    'hsl(256, 60%, 45%)',   // Darker
+    'hsl(256, 50%, 80%)',   // Very light
+    'hsl(256, 40%, 55%)',   // Muted
   ];
 
   return (

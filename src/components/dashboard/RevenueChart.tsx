@@ -68,8 +68,8 @@ export function RevenueChart({ orders, fixedCosts, daysBack = 30 }: RevenueChart
               <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
+              <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -109,7 +109,7 @@ export function RevenueChart({ orders, fixedCosts, daysBack = 30 }: RevenueChart
             type="monotone"
             dataKey="profit"
             name="Lucro"
-            stroke="hsl(var(--success))"
+            stroke="hsl(var(--chart-3))"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#colorProfit)"

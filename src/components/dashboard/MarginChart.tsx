@@ -113,9 +113,9 @@ export function MarginChart({ orders, fixedCosts, daysBack = 30 }: MarginChartPr
             type="monotone"
             dataKey="margin"
             name="Margem"
-            stroke="hsl(var(--accent))"
+            stroke="hsl(var(--primary))"
             strokeWidth={2}
-            dot={{ fill: 'hsl(var(--accent))', strokeWidth: 0, r: 3 }}
+            dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 3 }}
             activeDot={{ r: 5, strokeWidth: 0 }}
           />
         </LineChart>

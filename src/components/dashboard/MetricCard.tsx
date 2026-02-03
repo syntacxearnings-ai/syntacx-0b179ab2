@@ -29,7 +29,6 @@ export function MetricCard({
     value.toLocaleString('pt-BR');
 
   const isPositiveTrend = trend !== undefined && trend >= 0;
-  const isProfit = variant === 'profit' || (variant === 'default' && value >= 0);
 
   return (
     <div
@@ -46,7 +45,7 @@ export function MetricCard({
         {Icon && (
           <div className={cn(
             "w-7 h-7 md:w-9 md:h-9 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
-            variant === 'profit' ? "bg-success/10 text-success" :
+            variant === 'profit' ? "bg-primary/10 text-primary" :
             variant === 'loss' ? "bg-destructive/10 text-destructive" :
             "bg-primary/10 text-primary"
           )}>
@@ -57,7 +56,7 @@ export function MetricCard({
       
       <p className={cn(
         "text-lg md:text-2xl font-bold tracking-tight",
-        variant === 'profit' && "text-success",
+        variant === 'profit' && "text-primary",
         variant === 'loss' && "text-destructive"
       )}>
         {formattedValue}
@@ -69,7 +68,7 @@ export function MetricCard({
             className={cn(
               "text-xs font-medium px-1.5 py-0.5 rounded",
               isPositiveTrend 
-                ? "bg-success/10 text-success" 
+                ? "bg-primary/10 text-primary" 
                 : "bg-destructive/10 text-destructive"
             )}
           >

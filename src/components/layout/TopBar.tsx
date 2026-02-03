@@ -12,15 +12,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
-  User, 
   LogOut, 
   Settings, 
   Link2, 
   CheckCircle2, 
-  AlertCircle,
-  TrendingUp
+  AlertCircle
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import sxLogo from '@/assets/sx-logo.png';
 
 export function TopBar() {
   const { user, signOut } = useAuth();
@@ -43,9 +42,7 @@ export function TopBar() {
     <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 md:px-6">
       {/* Logo - visible on mobile */}
       <div className="flex items-center gap-2 md:hidden">
-        <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center">
-          <TrendingUp className="w-5 h-5 text-white" />
-        </div>
+        <img src={sxLogo} alt="SX" className="h-7 w-auto" />
         <span className="font-bold text-foreground">Syntacx</span>
       </div>
 
@@ -59,7 +56,7 @@ export function TopBar() {
           <Badge 
             variant="outline" 
             className={isConnected 
-              ? "border-success text-success cursor-pointer hover:bg-success/10" 
+              ? "border-primary text-primary cursor-pointer hover:bg-primary/10" 
               : "border-warning text-warning-foreground cursor-pointer hover:bg-warning/10"
             }
           >

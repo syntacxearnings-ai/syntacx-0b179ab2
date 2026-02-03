@@ -175,7 +175,7 @@ export type Database = {
           last_sync_at: string | null
           ml_user_id: string
           nickname: string | null
-          refresh_token: string
+          refresh_token: string | null
           site_id: string | null
           token_expires_at: string
           updated_at: string
@@ -190,7 +190,7 @@ export type Database = {
           last_sync_at?: string | null
           ml_user_id: string
           nickname?: string | null
-          refresh_token: string
+          refresh_token?: string | null
           site_id?: string | null
           token_expires_at: string
           updated_at?: string
@@ -205,7 +205,7 @@ export type Database = {
           last_sync_at?: string | null
           ml_user_id?: string
           nickname?: string | null
-          refresh_token?: string
+          refresh_token?: string | null
           site_id?: string | null
           token_expires_at?: string
           updated_at?: string

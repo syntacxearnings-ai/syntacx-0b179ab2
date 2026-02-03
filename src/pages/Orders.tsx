@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   Select,
   SelectContent,
@@ -17,28 +19,47 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { mockOrders, mockFixedCosts } from '@/lib/mockData';
-import { Order } from '@/lib/types';
+import { Order, FixedCost } from '@/lib/types';
 import { calculateNetProfit } from '@/lib/profitCalculator';
 import { formatCurrency, formatDate, formatDateTime, getStatusColor, statusLabels } from '@/lib/formatters';
 import { ProfitBreakdownPanel } from '@/components/dashboard/ProfitBreakdownPanel';
-import { Search, Filter, Eye, Package, Truck, Receipt, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { useOrders } from '@/hooks/useOrders';
+import { useCosts, FixedCost as DbFixedCost } from '@/hooks/useCosts';
+import { useIntegration } from '@/hooks/useIntegration';
+import { Search, Filter, Eye, Package, Truck, Receipt, Calendar, ChevronDown, ChevronUp, Link2, Loader2, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+function transformFixedCosts(dbCosts: DbFixedCost[]): FixedCost[] {
+  return dbCosts.map(cost => ({
+    id: cost.id,
+    name: cost.name,
+    category: cost.category,
+    amountMonthly: Number(cost.amount_monthly),
+    createdAt: new Date(cost.created_at),
+  }));
+}
+
 export default function Orders() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
+  const { isConnected, isLoading: isLoadingIntegration } = useIntegration();
+  const { orders, isLoading: isLoadingOrders } = useOrders();
+  const { fixedCosts: dbFixedCosts, isLoading: isLoadingCosts } = useCosts();
+
+  const fixedCosts = useMemo(() => transformFixedCosts(dbFixedCosts), [dbFixedCosts]);
+
   const filteredOrders = useMemo(() => {
-    let orders = [...mockOrders];
+    let filtered = [...orders];
 
     if (search) {
       const searchLower = search.toLowerCase();
-      orders = orders.filter(o => 
+      filtered = filtered.filter(o => 
         o.orderIdMl.toLowerCase().includes(searchLower) ||
         o.items.some(item => 
           item.sku.toLowerCase().includes(searchLower) ||
@@ -48,13 +69,56 @@ export default function Orders() {
     }
 
     if (statusFilter !== 'all') {
-      orders = orders.filter(o => o.status === statusFilter);
+      filtered = filtered.filter(o => o.status === statusFilter);
     }
 
-    return orders;
-  }, [search, statusFilter]);
+    return filtered;
+  }, [orders, search, statusFilter]);
 
-  const validOrdersCount = mockOrders.filter(o => o.status !== 'cancelled' && o.status !== 'returned').length;
+  const validOrdersCount = orders.filter(o => o.status !== 'cancelled' && o.status !== 'returned').length;
+
+  const isLoading = isLoadingIntegration || isLoadingOrders || isLoadingCosts;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader title="Pedidos" description="Gerencie e analise todos os pedidos do Mercado Livre" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader title="Pedidos" description="Gerencie e analise todos os pedidos do Mercado Livre" />
+        <EmptyState
+          icon={Link2}
+          title="Conecte sua conta do Mercado Livre"
+          description="Conecte sua conta para visualizar seus pedidos."
+          action={{ label: 'Conectar Mercado Livre', onClick: () => navigate('/integrations') }}
+          className="min-h-[400px] border rounded-xl bg-card"
+        />
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader title="Pedidos" description="Gerencie e analise todos os pedidos do Mercado Livre" />
+        <EmptyState
+          icon={ShoppingCart}
+          title="Nenhum pedido sincronizado"
+          description="Sincronize seus pedidos do Mercado Livre para visualizá-los aqui."
+          action={{ label: 'Ir para Integrações', onClick: () => navigate('/integrations') }}
+          className="min-h-[400px] border rounded-xl bg-card"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
@@ -94,7 +158,7 @@ export default function Orders() {
       {isMobile ? (
         <div className="space-y-3">
           {filteredOrders.map(order => {
-            const breakdown = calculateNetProfit(order, mockFixedCosts, validOrdersCount);
+            const breakdown = calculateNetProfit(order, fixedCosts, validOrdersCount);
             const isExpanded = expandedOrder === order.id;
             
             return (
@@ -186,7 +250,7 @@ export default function Orders() {
               </thead>
               <tbody>
                 {filteredOrders.map(order => {
-                  const breakdown = calculateNetProfit(order, mockFixedCosts, validOrdersCount);
+                  const breakdown = calculateNetProfit(order, fixedCosts, validOrdersCount);
                   return (
                     <tr key={order.id}>
                       <td className="font-medium">{order.orderIdMl}</td>
@@ -375,7 +439,7 @@ export default function Orders() {
                 <div>
                   <h4 className="font-semibold mb-3 text-sm sm:text-base">Cálculo do Lucro</h4>
                   <ProfitBreakdownPanel 
-                    breakdown={calculateNetProfit(selectedOrder, mockFixedCosts, validOrdersCount)} 
+                    breakdown={calculateNetProfit(selectedOrder, fixedCosts, validOrdersCount)} 
                   />
                 </div>
               </div>

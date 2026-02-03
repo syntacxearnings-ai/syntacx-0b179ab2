@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
+import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { 
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -19,404 +21,327 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { mockFixedCosts, mockVariableCostConfig, mockFeeDiscounts } from '@/lib/mockData';
-import { formatCurrency } from '@/lib/formatters';
-import { Plus, Edit, Trash2, Building2, Package, Receipt, Percent, Settings } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { 
+  Plus, 
+  Trash2, 
+  DollarSign, 
+  Calculator,
+  Percent,
+  Package,
+  Link2,
+  Loader2
+} from 'lucide-react';
+import { formatCurrency, formatPercentage } from '@/lib/formatters';
+import { useIntegration } from '@/hooks/useIntegration';
+import { useCosts, CreateFixedCostInput } from '@/hooks/useCosts';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-export default function Costs() {
-  const [showAddFixed, setShowAddFixed] = useState(false);
-  const [showAddDiscount, setShowAddDiscount] = useState(false);
-  const isMobile = useIsMobile();
+const COST_CATEGORIES = ['Infraestrutura', 'Serviços', 'Ferramentas', 'Pessoal', 'Outros'];
 
-  const totalFixedCosts = mockFixedCosts.reduce((sum, cost) => sum + cost.amountMonthly, 0);
+export default function Costs() {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const { isConnected, isLoading: isLoadingIntegration } = useIntegration();
+  const { 
+    fixedCosts, 
+    variableCostsConfig, 
+    totalFixedCosts,
+    isLoading,
+    createFixedCost,
+    deleteFixedCost,
+    updateVariableCostsConfig,
+    isCreating,
+    isDeleting,
+  } = useCosts();
+
+  const [showAddCost, setShowAddCost] = useState(false);
+  const [newCost, setNewCost] = useState<CreateFixedCostInput>({
+    name: '',
+    category: 'Outros',
+    amount_monthly: 0,
+  });
+
+  // Variable costs form state
+  const [variableForm, setVariableForm] = useState({
+    packaging_per_order: 2,
+    packaging_per_item: 0.5,
+    processing_per_order: 1.5,
+    ads_percentage: 3,
+    tax_percentage: 5,
+  });
+
+  // Update form when config loads
+  useEffect(() => {
+    if (variableCostsConfig) {
+      setVariableForm({
+        packaging_per_order: Number(variableCostsConfig.packaging_per_order),
+        packaging_per_item: Number(variableCostsConfig.packaging_per_item),
+        processing_per_order: Number(variableCostsConfig.processing_per_order),
+        ads_percentage: Number(variableCostsConfig.ads_percentage),
+        tax_percentage: Number(variableCostsConfig.tax_percentage),
+      });
+    }
+  }, [variableCostsConfig]);
+
+  const handleAddCost = () => {
+    if (!newCost.name || newCost.amount_monthly <= 0) return;
+    createFixedCost(newCost);
+    setShowAddCost(false);
+    setNewCost({ name: '', category: 'Outros', amount_monthly: 0 });
+  };
+
+  const handleDeleteCost = (id: string) => {
+    deleteFixedCost(id);
+  };
+
+  const handleSaveVariableCosts = () => {
+    updateVariableCostsConfig(variableForm);
+  };
+
+  if (isLoading || isLoadingIntegration) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader title="Custos" description="Gerencie seus custos fixos e variáveis" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader title="Custos" description="Gerencie seus custos fixos e variáveis" />
+        <EmptyState
+          icon={Link2}
+          title="Conecte sua conta do Mercado Livre"
+          description="Conecte sua conta para configurar seus custos."
+          action={{ label: 'Conectar Mercado Livre', onClick: () => navigate('/integrations') }}
+          className="min-h-[400px] border rounded-xl bg-card"
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader 
         title="Custos"
-        description="Configure custos fixos, variáveis e regras de taxas do Mercado Livre"
+        description="Gerencie seus custos fixos e variáveis para cálculo de lucro"
+        actions={
+          <Button onClick={() => setShowAddCost(true)} className="w-full sm:w-auto">
+            <Plus className="w-4 h-4 mr-2" />
+            Adicionar Custo Fixo
+          </Button>
+        }
       />
 
-      <Tabs defaultValue="fixed" className="space-y-4 sm:space-y-6">
-        <TabsList className="w-full sm:w-auto flex flex-wrap h-auto gap-1 p-1">
-          <TabsTrigger value="fixed" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
-            <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Custos Fixos</span>
-            <span className="sm:hidden">Fixos</span>
-          </TabsTrigger>
-          <TabsTrigger value="variable" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
-            <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Custos Variáveis</span>
-            <span className="sm:hidden">Variáveis</span>
-          </TabsTrigger>
-          <TabsTrigger value="fees" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
-            <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Taxas ML</span>
-            <span className="sm:hidden">Taxas</span>
-          </TabsTrigger>
-          <TabsTrigger value="discounts" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
-            <Percent className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Descontos</span>
-            <span className="sm:hidden">Desc.</span>
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Fixed Costs Tab */}
-        <TabsContent value="fixed" className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Total mensal: <span className="font-semibold text-foreground">{formatCurrency(totalFixedCosts)}</span>
-              </p>
-            </div>
-            <Dialog open={showAddFixed} onOpenChange={setShowAddFixed}>
-              <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Custo
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Novo Custo Fixo</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Nome</Label>
-                    <Input placeholder="Ex: Aluguel, Software, Contador..." />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Categoria</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Infraestrutura">Infraestrutura</SelectItem>
-                        <SelectItem value="Serviços">Serviços</SelectItem>
-                        <SelectItem value="Ferramentas">Ferramentas</SelectItem>
-                        <SelectItem value="Pessoal">Pessoal</SelectItem>
-                        <SelectItem value="Outros">Outros</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Valor Mensal (R$)</Label>
-                    <Input type="number" step="0.01" placeholder="0,00" />
-                  </div>
-                  <Button className="w-full">Adicionar</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="grid gap-3 sm:gap-4">
-            {mockFixedCosts.map(cost => (
-              <Card key={cost.id}>
-                <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm sm:text-base truncate">{cost.name}</p>
-                      <Badge variant="secondary" className="mt-1 text-xs">{cost.category}</Badge>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
-                    <div className="flex items-baseline gap-1">
-                      <p className="text-lg sm:text-xl font-bold">{formatCurrency(cost.amountMonthly)}</p>
-                      <span className="text-xs sm:text-sm text-muted-foreground">/mês</span>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Variable Costs Tab */}
-        <TabsContent value="variable" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2 sm:pb-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-                Configurações de Custos Variáveis
-              </CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                Configure os custos que variam por pedido ou percentual da receita
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div className="space-y-3 sm:space-y-4">
-                  <h4 className="font-medium text-sm sm:text-base">Embalagem</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-xs sm:text-sm">Por Pedido (R$)</Label>
-                      <Input 
-                        type="number" 
-                        step="0.01" 
-                        defaultValue={mockVariableCostConfig.packagingPerOrder}
-                        className="w-20 sm:w-24 text-right text-sm"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-xs sm:text-sm">Por Item (R$)</Label>
-                      <Input 
-                        type="number" 
-                        step="0.01" 
-                        defaultValue={mockVariableCostConfig.packagingPerItem}
-                        className="w-20 sm:w-24 text-right text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 sm:space-y-4">
-                  <h4 className="font-medium text-sm sm:text-base">Processamento</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-xs sm:text-sm">Por Pedido (R$)</Label>
-                      <Input 
-                        type="number" 
-                        step="0.01" 
-                        defaultValue={mockVariableCostConfig.processingPerOrder}
-                        className="w-20 sm:w-24 text-right text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 sm:space-y-4">
-                  <h4 className="font-medium text-sm sm:text-base">Marketing/Ads</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-xs sm:text-sm">% sobre Receita</Label>
-                      <div className="flex items-center gap-1">
-                        <Input 
-                          type="number" 
-                          step="0.1" 
-                          defaultValue={mockVariableCostConfig.adsPercentage}
-                          className="w-16 sm:w-20 text-right text-sm"
-                        />
-                        <span className="text-muted-foreground text-sm">%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 sm:space-y-4">
-                  <h4 className="font-medium text-sm sm:text-base">Impostos</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-xs sm:text-sm">% sobre Receita</Label>
-                      <div className="flex items-center gap-1">
-                        <Input 
-                          type="number" 
-                          step="0.1" 
-                          defaultValue={mockVariableCostConfig.taxPercentage}
-                          className="w-16 sm:w-20 text-right text-sm"
-                        />
-                        <span className="text-muted-foreground text-sm">%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t">
-                <Button className="w-full sm:w-auto">Salvar Configurações</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ML Fees Tab */}
-        <TabsContent value="fees" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2 sm:pb-4">
-              <CardTitle className="text-base sm:text-lg">Taxas do Mercado Livre</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                Configure regras de taxas por categoria e tipo de anúncio
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isMobile ? (
-                <div className="space-y-3">
-                  {[
-                    { cat: 'Eletrônicos', tipo: 'Clássico', taxa: '12%' },
-                    { cat: 'Eletrônicos', tipo: 'Premium', taxa: '16%' },
-                    { cat: 'Acessórios', tipo: 'Clássico', taxa: '11%' },
-                    { cat: 'Cabos', tipo: 'Clássico', taxa: '10%' },
-                  ].map((item, i) => (
-                    <Card key={i}>
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm">{item.cat}</p>
-                          <Badge variant="secondary" className="mt-1 text-xs">{item.tipo}</Badge>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold">{item.taxa}</span>
-                          <Button variant="ghost" size="sm"><Edit className="w-4 h-4" /></Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-border overflow-hidden">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Categoria</th>
-                        <th>Tipo Anúncio</th>
-                        <th>Taxa (%)</th>
-                        <th className="text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Eletrônicos</td>
-                        <td><Badge variant="secondary">Clássico</Badge></td>
-                        <td>12%</td>
-                        <td className="text-right">
-                          <Button variant="ghost" size="sm"><Edit className="w-4 h-4" /></Button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>Eletrônicos</td>
-                        <td><Badge variant="outline">Premium</Badge></td>
-                        <td>16%</td>
-                        <td className="text-right">
-                          <Button variant="ghost" size="sm"><Edit className="w-4 h-4" /></Button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>Acessórios</td>
-                        <td><Badge variant="secondary">Clássico</Badge></td>
-                        <td>11%</td>
-                        <td className="text-right">
-                          <Button variant="ghost" size="sm"><Edit className="w-4 h-4" /></Button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>Cabos</td>
-                        <td><Badge variant="secondary">Clássico</Badge></td>
-                        <td>10%</td>
-                        <td className="text-right">
-                          <Button variant="ghost" size="sm"><Edit className="w-4 h-4" /></Button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <Button variant="outline" className="mt-4 w-full sm:w-auto">
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Regra
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Fee Discounts Tab */}
-        <TabsContent value="discounts" className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Descontos aplicados às taxas do ML (reputação, campanhas, etc.)
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              Total Custos Fixos/Mês
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{formatCurrency(totalFixedCosts)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              Embalagem/Pedido
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              {formatCurrency(variableForm.packaging_per_order)}
             </p>
-            <Dialog open={showAddDiscount} onOpenChange={setShowAddDiscount}>
-              <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Desconto
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Novo Desconto de Taxa</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Nome</Label>
-                    <Input placeholder="Ex: Desconto Reputação Verde" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="percentage">Percentual (%)</SelectItem>
-                        <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Valor</Label>
-                    <Input type="number" step="0.01" placeholder="0" />
-                  </div>
-                  <Button className="w-full">Adicionar</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Percent className="w-4 h-4" />
+              Impostos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              {formatPercentage(variableForm.tax_percentage)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-          <div className="grid gap-3 sm:gap-4">
-            {mockFeeDiscounts.map(discount => (
-              <Card key={discount.id}>
-                <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className={cn(
-                      "w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                      discount.isActive ? "bg-success/10" : "bg-muted"
-                    )}>
-                      <Percent className={cn(
-                        "w-4 h-4 sm:w-5 sm:h-5",
-                        discount.isActive ? "text-success" : "text-muted-foreground"
-                      )} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Fixed Costs */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calculator className="w-5 h-5" />
+              Custos Fixos Mensais
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {fixedCosts.length === 0 ? (
+              <EmptyState
+                icon={DollarSign}
+                title="Nenhum custo fixo"
+                description="Adicione seus custos fixos mensais"
+                action={{ label: 'Adicionar Custo', onClick: () => setShowAddCost(true) }}
+              />
+            ) : (
+              <div className="space-y-3">
+                {fixedCosts.map((cost) => (
+                  <div 
+                    key={cost.id} 
+                    className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{cost.name}</p>
+                      <Badge variant="outline" className="text-xs mt-1">{cost.category}</Badge>
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm sm:text-base truncate">{discount.name}</p>
-                      <Badge variant={discount.isActive ? "default" : "secondary"} className="mt-1 text-xs">
-                        {discount.isActive ? 'Ativo' : 'Inativo'}
-                      </Badge>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{formatCurrency(Number(cost.amount_monthly))}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteCost(cost.id)}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
-                    <p className="text-lg sm:text-xl font-bold">
-                      {discount.type === 'percentage' ? `${discount.value}%` : formatCurrency(discount.value)}
-                    </p>
-                    <Switch checked={discount.isActive} />
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                ))}
+                <div className="pt-3 border-t flex justify-between">
+                  <span className="font-medium">Total Mensal</span>
+                  <span className="font-bold text-lg">{formatCurrency(totalFixedCosts)}</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Variable Costs */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Percent className="w-5 h-5" />
+              Custos Variáveis (por pedido)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Embalagem/Pedido (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={variableForm.packaging_per_order}
+                  onChange={(e) => setVariableForm(prev => ({ ...prev, packaging_per_order: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Embalagem/Item (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={variableForm.packaging_per_item}
+                  onChange={(e) => setVariableForm(prev => ({ ...prev, packaging_per_item: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Processamento/Pedido (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={variableForm.processing_per_order}
+                  onChange={(e) => setVariableForm(prev => ({ ...prev, processing_per_order: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Ads (%)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={variableForm.ads_percentage}
+                  onChange={(e) => setVariableForm(prev => ({ ...prev, ads_percentage: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label>Impostos (%)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={variableForm.tax_percentage}
+                  onChange={(e) => setVariableForm(prev => ({ ...prev, tax_percentage: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+            </div>
+            <Button onClick={handleSaveVariableCosts} className="w-full">
+              Salvar Custos Variáveis
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Add Cost Dialog */}
+      <Dialog open={showAddCost} onOpenChange={setShowAddCost}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Custo Fixo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input
+                placeholder="Ex: Aluguel, Contador, Internet..."
+                value={newCost.name}
+                onChange={(e) => setNewCost(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select 
+                value={newCost.category} 
+                onValueChange={(v) => setNewCost(prev => ({ ...prev, category: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COST_CATEGORIES.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Valor Mensal (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="0,00"
+                value={newCost.amount_monthly || ''}
+                onChange={(e) => setNewCost(prev => ({ ...prev, amount_monthly: parseFloat(e.target.value) || 0 }))}
+              />
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddCost(false)}>Cancelar</Button>
+            <Button onClick={handleAddCost} disabled={isCreating}>
+              {isCreating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,10 +7,11 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://289fa9d9-b6c0-4489-93d0-bad81c3761bb.lovableproject.com';
 
   try {
     const url = new URL(req.url);
@@ -19,62 +20,87 @@ serve(async (req) => {
     const error = url.searchParams.get('error');
     const errorDescription = url.searchParams.get('error_description');
 
-    console.log('OAuth callback received:', { code: code ? 'present' : 'missing', state, error });
+    console.log('[ML Callback] ===== OAUTH CALLBACK =====');
+    console.log('[ML Callback] code:', code ? 'present' : 'missing');
+    console.log('[ML Callback] state:', state);
+    console.log('[ML Callback] error:', error);
 
-    // Check for OAuth errors from ML
+    // Handle OAuth errors from ML
     if (error) {
-      console.error('OAuth error from ML:', error, errorDescription);
-      const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://syntacx-profit-navigator.lovable.app';
+      console.error('[ML Callback] OAuth error from ML:', error, errorDescription);
       return new Response(null, {
         status: 302,
         headers: {
-          ...corsHeaders,
-          'Location': `${frontendUrl}/integrations?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(errorDescription || '')}`,
+          'Location': `${frontendUrl}/integrations?ml_error=${encodeURIComponent(error)}&ml_error_description=${encodeURIComponent(errorDescription || '')}`,
         },
       });
     }
 
-    if (!code) {
-      console.error('Missing authorization code');
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization code' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!code || !state) {
+      console.error('[ML Callback] Missing code or state');
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `${frontendUrl}/integrations?ml_error=missing_params&ml_error_description=${encodeURIComponent('Código ou state ausente')}`,
+        },
+      });
     }
 
-    // Get credentials from request body (POST) or headers
-    const body = req.method === 'POST' ? await req.json() : {};
-    const clientId = body.client_id || req.headers.get('x-ml-client-id');
-    const clientSecret = body.client_secret || req.headers.get('x-ml-client-secret');
-    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://syntacx-profit-navigator.lovable.app';
-    // CRITICAL: redirect_uri MUST be identical to the one used in authorization
-    const redirectUri = body.redirect_uri || `${frontendUrl}/api/integrations/meli/callback`;
+    // Validate state from database
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-    console.log('Token exchange config:', { 
-      clientId: clientId ? 'present' : 'missing', 
-      clientSecret: clientSecret ? 'present' : 'missing',
-      redirectUri 
-    });
+    const { data: stateData, error: stateError } = await supabaseAdmin
+      .from('oauth_states')
+      .select('*')
+      .eq('state', state)
+      .is('used_at', null)
+      .single();
 
-    if (!clientId || !clientSecret) {
-      return new Response(
-        JSON.stringify({ error: 'Missing client credentials' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (stateError || !stateData) {
+      console.error('[ML Callback] Invalid state:', stateError?.message || 'State not found or already used');
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `${frontendUrl}/integrations?ml_error=invalid_state&ml_error_description=${encodeURIComponent('State inválido, expirado ou já utilizado. Tente conectar novamente.')}`,
+        },
+      });
     }
 
-    // Exchange code for tokens using authorization_code grant
-    // Body MUST be x-www-form-urlencoded
+    // Check if state expired
+    if (new Date(stateData.expires_at) < new Date()) {
+      console.error('[ML Callback] State expired:', stateData.expires_at);
+      await supabaseAdmin.from('oauth_states').delete().eq('id', stateData.id);
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `${frontendUrl}/integrations?ml_error=state_expired&ml_error_description=${encodeURIComponent('Sessão expirada. Tente conectar novamente.')}`,
+        },
+      });
+    }
+
+    console.log('[ML Callback] State validated for user:', stateData.user_id);
+    console.log('[ML Callback] redirect_uri (token_exchange):', stateData.redirect_uri);
+
+    // Mark state as used immediately
+    await supabaseAdmin
+      .from('oauth_states')
+      .update({ used_at: new Date().toISOString() })
+      .eq('id', stateData.id);
+
+    // Exchange code for tokens
     const tokenBody = new URLSearchParams({
       grant_type: 'authorization_code',
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: stateData.client_id,
+      client_secret: stateData.client_secret,
       code: code,
-      redirect_uri: redirectUri,
+      redirect_uri: stateData.redirect_uri,
     });
 
-    console.log('Exchanging code for tokens...');
-    
+    console.log('[ML Callback] Exchanging code for tokens...');
+
     const tokenResponse = await fetch('https://api.mercadolibre.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -85,138 +111,115 @@ serve(async (req) => {
     });
 
     const tokenResponseText = await tokenResponse.text();
-    console.log('Token response status:', tokenResponse.status);
-    
+    console.log('[ML Callback] Token response status:', tokenResponse.status);
+
     if (!tokenResponse.ok) {
-      console.error('Token exchange failed:', tokenResponseText);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to exchange code for tokens', 
-          details: tokenResponseText,
-          status: tokenResponse.status 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('[ML Callback] Token exchange failed:', tokenResponseText);
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `${frontendUrl}/integrations?ml_error=token_exchange_failed&ml_error_description=${encodeURIComponent('Falha ao trocar código por tokens')}`,
+        },
+      });
     }
 
     let tokens;
     try {
       tokens = JSON.parse(tokenResponseText);
-    } catch (e) {
-      console.error('Failed to parse token response:', tokenResponseText);
-      return new Response(
-        JSON.stringify({ error: 'Invalid token response from ML', details: tokenResponseText }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    } catch {
+      console.error('[ML Callback] Failed to parse token response');
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `${frontendUrl}/integrations?ml_error=invalid_token_response&ml_error_description=${encodeURIComponent('Resposta inválida do Mercado Livre')}`,
+        },
+      });
     }
 
-    console.log('Tokens received:', { 
+    console.log('[ML Callback] Tokens received:', {
       access_token: tokens.access_token ? 'present' : 'missing',
       refresh_token: tokens.refresh_token ? 'present' : 'missing',
       expires_in: tokens.expires_in,
       user_id: tokens.user_id
     });
 
-    // Get user info from Mercado Livre
+    // Get ML user info
     const userResponse = await fetch('https://api.mercadolibre.com/users/me', {
-      headers: {
-        'Authorization': `Bearer ${tokens.access_token}`,
-      },
+      headers: { 'Authorization': `Bearer ${tokens.access_token}` },
     });
 
     if (!userResponse.ok) {
-      const userError = await userResponse.text();
-      console.error('Failed to get ML user info:', userError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to get user info from ML', details: userError }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('[ML Callback] Failed to get ML user info');
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `${frontendUrl}/integrations?ml_error=user_info_failed&ml_error_description=${encodeURIComponent('Falha ao obter informações do usuário ML')}`,
+        },
+      });
     }
 
     const mlUser = await userResponse.json();
-    console.log('ML user info:', { id: mlUser.id, nickname: mlUser.nickname, site_id: mlUser.site_id });
+    console.log('[ML Callback] ML user:', { id: mlUser.id, nickname: mlUser.nickname });
 
-    // Create Supabase client with service role for database operations
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
-
-    // Get authenticated user from auth header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.error('Missing auth header');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized - missing auth token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !userData.user) {
-      console.error('Failed to get auth user:', userError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized', details: userError?.message }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Calculate token expiration timestamp
+    // Calculate token expiration
     const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000)).toISOString();
 
-    // Upsert integration record with all required fields
-    const { error: upsertError } = await supabaseAdmin
-      .from('mercadolivre_integrations')
-      .upsert({
-        user_id: userData.user.id,
-        ml_user_id: String(mlUser.id),
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        token_expires_at: expiresAt,
-        nickname: mlUser.nickname,
-        email: mlUser.email,
-        site_id: mlUser.site_id || 'MLB',
-        is_active: true,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id',
-      });
+    // Upsert integration - handle case where refresh_token might be null
+    const integrationData: Record<string, unknown> = {
+      user_id: stateData.user_id,
+      ml_user_id: String(mlUser.id),
+      access_token: tokens.access_token,
+      token_expires_at: expiresAt,
+      nickname: mlUser.nickname,
+      email: mlUser.email,
+      site_id: mlUser.site_id || 'MLB',
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    };
 
-    if (upsertError) {
-      console.error('Database upsert error:', upsertError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to save integration', details: upsertError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Only include refresh_token if it exists
+    if (tokens.refresh_token) {
+      integrationData.refresh_token = tokens.refresh_token;
+    } else {
+      // Set a placeholder to satisfy NOT NULL constraint
+      // This will be updated when we get a proper refresh token
+      integrationData.refresh_token = 'pending_refresh_token';
     }
 
-    console.log('Integration saved successfully for user:', userData.user.id);
+    const { error: upsertError } = await supabaseAdmin
+      .from('mercadolivre_integrations')
+      .upsert(integrationData, { onConflict: 'user_id' });
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        user: {
-          id: mlUser.id,
-          nickname: mlUser.nickname,
-          email: mlUser.email,
-          site_id: mlUser.site_id,
-        }
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    if (upsertError) {
+      console.error('[ML Callback] Database upsert error:', upsertError);
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `${frontendUrl}/integrations?ml_error=db_error&ml_error_description=${encodeURIComponent('Falha ao salvar integração')}`,
+        },
+      });
+    }
+
+    console.log('[ML Callback] Integration saved successfully');
+
+    // Clean up used state
+    await supabaseAdmin.from('oauth_states').delete().eq('id', stateData.id);
+
+    // Redirect to success
+    return new Response(null, {
+      status: 302,
+      headers: {
+        'Location': `${frontendUrl}/integrations?ml_success=1`,
+      },
+    });
 
   } catch (error: unknown) {
-    console.error('Unexpected error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error('[ML Callback] Unexpected error:', error);
+    return new Response(null, {
+      status: 302,
+      headers: {
+        'Location': `${frontendUrl}/integrations?ml_error=unexpected&ml_error_description=${encodeURIComponent('Erro inesperado')}`,
+      },
+    });
   }
 });

@@ -17,6 +17,7 @@ import { Link2, ShoppingBag, CheckCircle2, AlertCircle, RefreshCw, ExternalLink,
 import { cn } from '@/lib/utils';
 import { useIntegration } from '@/hooks/useIntegration';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Integrations() {
   const [showMlConnect, setShowMlConnect] = useState(false);
@@ -53,7 +54,7 @@ export default function Integrations() {
     }
   }, [searchParams, setSearchParams, toast]);
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (!clientId || !clientSecret) {
       toast({
         variant: 'destructive',
@@ -63,34 +64,63 @@ export default function Integrations() {
       return;
     }
 
-    // IMPORTANT: redirect_uri MUST match EXACTLY what is registered in ML Developers.
-    // Using the preview domain since that's what's registered.
-    const REGISTERED_REDIRECT_URI = 'https://289fa9d9-b6c0-4489-93d0-bad81c3761bb.lovableproject.com/api/integrations/meli/callback';
-    const redirectUri = REGISTERED_REDIRECT_URI;
-    const state = crypto.randomUUID();
-    
-    // Store state for verification
-    sessionStorage.setItem('ml_oauth_state', state);
-    sessionStorage.setItem('ml_client_id', clientId);
-    sessionStorage.setItem('ml_client_secret', clientSecret);
-    sessionStorage.setItem('ml_redirect_uri', redirectUri);
+    try {
+      // Get session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          variant: 'destructive',
+          title: 'Não autenticado',
+          description: 'Faça login para conectar ao Mercado Livre',
+        });
+        return;
+      }
 
-    // Build OAuth URL - NO read/write scopes (they are invalid)
-    const authUrl = new URL('https://auth.mercadolivre.com.br/authorization');
-    authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('client_id', clientId);
-    authUrl.searchParams.set('redirect_uri', redirectUri);
-    authUrl.searchParams.set('state', state);
-    // Option: add scope=offline_access for refresh_token support
-    // authUrl.searchParams.set('scope', 'offline_access');
+      // Call backend to generate state and get authorization URL
+      const fnBaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const authParams = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+      });
 
-    console.log('[ML OAuth] ===== AUTHORIZE =====');
-    console.log('[ML OAuth] authorize_url:', authUrl.toString());
-    console.log('[ML OAuth] redirect_uri (authorize):', redirectUri);
-    console.log('[ML OAuth] client_id:', clientId);
-    console.log('[ML OAuth] state:', state);
+      console.log('[ML OAuth] Requesting auth URL from backend...');
 
-    window.location.href = authUrl.toString();
+      const response = await fetch(
+        `${fnBaseUrl}/functions/v1/meli-auth?${authParams.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('[ML OAuth] Auth init failed:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao iniciar OAuth',
+          description: error.error || 'Tente novamente',
+        });
+        return;
+      }
+
+      const { authorization_url } = await response.json();
+      console.log('[ML OAuth] Redirecting to:', authorization_url);
+
+      // Redirect to Mercado Livre
+      window.location.href = authorization_url;
+
+    } catch (error) {
+      console.error('[ML OAuth] Error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Falha ao iniciar conexão com Mercado Livre',
+      });
+    }
   };
 
   const handleDisconnect = () => {

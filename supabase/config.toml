@@ -1,9 +1,6 @@
 project_id = "vzgrnfoqdhjizttoxnhh"
 
-[functions.meli-oauth-callback]
-verify_jwt = false
-
-[functions.meli-refresh-token]
+[functions.meli-auth]
 verify_jwt = false
 
 [functions.meli-oauth-callback]

@@ -9,13 +9,13 @@ import {
   Settings,
   Link as LinkIcon,
   ChevronLeft,
-  ChevronRight,
-  TrendingUp
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useIntegration } from '@/hooks/useIntegration';
+import sxLogo from '@/assets/sx-logo.png';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -43,10 +43,8 @@ export function AppSidebar() {
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         {!collapsed && (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-sidebar-primary-foreground" />
-            </div>
+          <div className="flex items-center gap-3">
+            <img src={sxLogo} alt="SX" className="h-8 w-auto" />
             <div>
               <h1 className="font-bold text-sidebar-accent-foreground text-lg tracking-tight">Syntacx</h1>
               <p className="text-[10px] text-sidebar-muted uppercase tracking-widest">Ops</p>
@@ -54,9 +52,7 @@ export function AppSidebar() {
           </div>
         )}
         {collapsed && (
-          <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center mx-auto">
-            <TrendingUp className="w-5 h-5 text-sidebar-primary-foreground" />
-          </div>
+          <img src={sxLogo} alt="SX" className="h-7 w-auto mx-auto" />
         )}
       </div>
 
@@ -87,10 +83,13 @@ export function AppSidebar() {
           <div className={cn(
             "rounded-lg border p-3",
             isConnected 
-              ? "bg-success/10 border-success/30" 
+              ? "bg-primary/10 border-primary/30" 
               : "bg-warning/10 border-warning/30"
           )}>
-            <p className="text-xs font-medium">
+            <p className={cn(
+              "text-xs font-medium",
+              isConnected ? "text-primary" : "text-warning-foreground"
+            )}>
               {isConnected ? 'Mercado Livre Conectado' : 'ML Não Conectado'}
             </p>
             <p className="text-xs text-sidebar-muted mt-0.5">

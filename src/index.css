@@ -5,44 +5,45 @@
 @tailwind utilities;
 
 /* Syntacx Ops Design System
-   Professional SaaS for financial analytics
-   Colors: Deep blue primary, teal success, warm accents
+   Premium SaaS - Purple + Black Identity
+   Primary: #6D3EF2 (Purple SX)
+   Base: #0B0B0F (Black)
 */
 
 @layer base {
   :root {
-    /* Core backgrounds */
-    --background: 220 20% 97%;
-    --foreground: 222 47% 11%;
+    /* Core backgrounds - Light mode */
+    --background: 240 10% 98%;
+    --foreground: 260 10% 10%;
 
     /* Cards & elevated surfaces */
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 260 10% 10%;
 
     /* Popovers & dropdowns */
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 260 10% 10%;
 
-    /* Primary: Deep professional blue */
-    --primary: 222 65% 25%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary: Purple SX #6D3EF2 */
+    --primary: 256 87% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Soft blue-gray */
-    --secondary: 215 25% 92%;
-    --secondary-foreground: 222 47% 20%;
+    /* Secondary: Light purple tint */
+    --secondary: 256 40% 96%;
+    --secondary-foreground: 256 87% 50%;
 
     /* Muted: Subtle backgrounds */
-    --muted: 220 15% 94%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 240 10% 94%;
+    --muted-foreground: 240 5% 46%;
 
-    /* Accent: Teal for highlights */
-    --accent: 168 65% 40%;
+    /* Accent: Purple highlight */
+    --accent: 256 87% 60%;
     --accent-foreground: 0 0% 100%;
 
-    /* Success: Green for positive metrics */
-    --success: 152 60% 40%;
+    /* Success: Purple tones (não mais verde) */
+    --success: 256 70% 55%;
     --success-foreground: 0 0% 100%;
-    --success-muted: 152 40% 92%;
+    --success-muted: 256 40% 94%;
 
     /* Warning: Amber for alerts */
     --warning: 38 92% 50%;
@@ -54,69 +55,72 @@
     --destructive-foreground: 0 0% 100%;
     --destructive-muted: 0 50% 94%;
 
-    /* Profit indicators */
-    --profit: 152 60% 35%;
+    /* Profit/Loss indicators - Purple tones */
+    --profit: 256 70% 55%;
     --profit-foreground: 0 0% 100%;
     --loss: 0 72% 51%;
     --loss-foreground: 0 0% 100%;
 
     /* Form elements */
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 222 65% 45%;
+    --border: 240 10% 88%;
+    --input: 240 10% 88%;
+    --ring: 256 87% 60%;
 
     --radius: 0.625rem;
 
-    /* Charts */
-    --chart-1: 222 65% 45%;
-    --chart-2: 168 65% 45%;
-    --chart-3: 152 60% 45%;
-    --chart-4: 38 92% 50%;
-    --chart-5: 280 60% 55%;
+    /* Charts - Purple scale */
+    --chart-1: 256 87% 60%;
+    --chart-2: 256 70% 70%;
+    --chart-3: 256 60% 45%;
+    --chart-4: 256 50% 80%;
+    --chart-5: 256 40% 55%;
 
-    /* Sidebar - dark theme */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 220 15% 85%;
-    --sidebar-primary: 168 65% 50%;
+    /* Sidebar - Dark theme (Black base) */
+    --sidebar-background: 260 20% 4%;
+    --sidebar-foreground: 240 10% 75%;
+    --sidebar-primary: 256 87% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 40% 18%;
-    --sidebar-accent-foreground: 220 15% 95%;
-    --sidebar-border: 222 30% 20%;
-    --sidebar-ring: 168 65% 50%;
-    --sidebar-muted: 220 15% 60%;
+    --sidebar-accent: 256 60% 20%;
+    --sidebar-accent-foreground: 256 87% 70%;
+    --sidebar-border: 260 15% 15%;
+    --sidebar-ring: 256 87% 60%;
+    --sidebar-muted: 240 10% 50%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(222 65% 25%), hsl(222 65% 35%));
-    --gradient-success: linear-gradient(135deg, hsl(152 60% 35%), hsl(168 65% 40%));
-    --gradient-accent: linear-gradient(135deg, hsl(168 65% 40%), hsl(180 50% 45%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 20% 98%));
+    --gradient-primary: linear-gradient(135deg, hsl(256 87% 60%), hsl(256 87% 50%));
+    --gradient-success: linear-gradient(135deg, hsl(256 70% 55%), hsl(256 60% 65%));
+    --gradient-accent: linear-gradient(135deg, hsl(256 87% 60%), hsl(256 70% 70%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 10% 98%));
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    /* Dark mode - Black base */
+    --background: 260 20% 4%;
+    --foreground: 0 0% 95%;
 
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
+    --card: 260 20% 7%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 260 20% 7%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 168 65% 50%;
-    --primary-foreground: 222 47% 11%;
+    /* Primary: Purple SX */
+    --primary: 256 87% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 30% 18%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 260 20% 12%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 222 30% 15%;
-    --muted-foreground: 220 15% 60%;
+    --muted: 260 15% 12%;
+    --muted-foreground: 240 10% 60%;
 
-    --accent: 168 65% 45%;
+    --accent: 256 87% 60%;
     --accent-foreground: 0 0% 100%;
 
-    --success: 152 60% 45%;
+    /* Success: Purple tones */
+    --success: 256 70% 60%;
     --success-foreground: 0 0% 100%;
-    --success-muted: 152 30% 15%;
+    --success-muted: 256 30% 15%;
 
     --warning: 38 92% 55%;
     --warning-foreground: 0 0% 0%;
@@ -126,29 +130,29 @@
     --destructive-foreground: 0 0% 100%;
     --destructive-muted: 0 40% 15%;
 
-    --profit: 152 60% 50%;
+    --profit: 256 70% 65%;
     --profit-foreground: 0 0% 100%;
     --loss: 0 72% 55%;
     --loss-foreground: 0 0% 100%;
 
-    --border: 222 30% 20%;
-    --input: 222 30% 20%;
-    --ring: 168 65% 50%;
+    --border: 260 15% 18%;
+    --input: 260 15% 18%;
+    --ring: 256 87% 60%;
 
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 220 15% 85%;
-    --sidebar-primary: 168 65% 50%;
+    --sidebar-background: 260 20% 3%;
+    --sidebar-foreground: 240 10% 75%;
+    --sidebar-primary: 256 87% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 40% 15%;
-    --sidebar-accent-foreground: 220 15% 95%;
-    --sidebar-border: 222 30% 15%;
-    --sidebar-ring: 168 65% 50%;
-    --sidebar-muted: 220 15% 50%;
+    --sidebar-accent: 256 50% 15%;
+    --sidebar-accent-foreground: 256 70% 80%;
+    --sidebar-border: 260 15% 12%;
+    --sidebar-ring: 256 87% 60%;
+    --sidebar-muted: 240 10% 45%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(222 47% 12%), hsl(222 47% 18%));
-    --gradient-success: linear-gradient(135deg, hsl(152 60% 40%), hsl(168 65% 45%));
-    --gradient-accent: linear-gradient(135deg, hsl(168 65% 45%), hsl(180 50% 50%));
-    --gradient-card: linear-gradient(180deg, hsl(222 47% 10%), hsl(222 47% 8%));
+    --gradient-primary: linear-gradient(135deg, hsl(256 87% 55%), hsl(256 70% 45%));
+    --gradient-success: linear-gradient(135deg, hsl(256 60% 50%), hsl(256 50% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(256 87% 55%), hsl(256 70% 65%));
+    --gradient-card: linear-gradient(180deg, hsl(260 20% 8%), hsl(260 20% 5%));
   }
 }
 
@@ -170,7 +174,7 @@
   }
 
   .metric-card-profit {
-    @apply metric-card border-l-4 border-l-success;
+    @apply metric-card border-l-4 border-l-primary;
   }
 
   .metric-card-loss {
@@ -178,7 +182,7 @@
   }
 
   .metric-card-neutral {
-    @apply metric-card border-l-4 border-l-primary;
+    @apply metric-card border-l-4 border-l-primary/50;
   }
 
   /* Stat value styling */
@@ -187,7 +191,7 @@
   }
 
   .stat-value-profit {
-    @apply stat-value text-success;
+    @apply stat-value text-primary;
   }
 
   .stat-value-loss {
@@ -242,7 +246,7 @@
   }
 
   .sidebar-link-active {
-    @apply bg-sidebar-primary text-sidebar-primary-foreground font-medium;
+    @apply bg-sidebar-primary/15 text-sidebar-primary font-medium;
   }
 
   /* Chart containers */
@@ -250,13 +254,13 @@
     @apply rounded-xl border border-border bg-card p-5;
   }
 
-  /* Status badges */
+  /* Status badges - Purple based */
   .status-badge {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
   }
 
   .status-paid {
-    @apply bg-success-muted text-success;
+    @apply bg-primary/10 text-primary;
   }
 
   .status-pending {

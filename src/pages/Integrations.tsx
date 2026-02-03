@@ -43,12 +43,13 @@ export default function Integrations() {
     sessionStorage.setItem('ml_client_id', clientId);
     sessionStorage.setItem('ml_client_secret', clientSecret);
 
-    // Redirect to Mercado Livre OAuth
+    // Redirect to Mercado Livre OAuth - scope is REQUIRED
     const authUrl = new URL('https://auth.mercadolivre.com.br/authorization');
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('scope', 'offline_access read write');
 
     window.location.href = authUrl.toString();
   };

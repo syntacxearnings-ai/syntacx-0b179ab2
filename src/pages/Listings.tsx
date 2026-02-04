@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -17,11 +18,30 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useListings, MLListing } from '@/hooks/useListings';
 import { useIntegration } from '@/hooks/useIntegration';
 import { useSync } from '@/hooks/useSync';
+import { useListingActions } from '@/hooks/useListingActions';
 import { formatCurrency } from '@/lib/formatters';
 import { 
   Package, 
@@ -34,20 +54,36 @@ import {
   CheckCircle2,
   PauseCircle,
   XCircle,
-  Filter
+  Filter,
+  MoreHorizontal,
+  Play,
+  Pause,
+  Ban,
+  DollarSign,
+  Boxes,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Listings() {
   const navigate = useNavigate();
-  const { listings, variations, getVariationsForListing, isLoading, stats, refetch } = useListings();
+  const { listings, getVariationsForListing, isLoading, stats, refetch } = useListings();
   const { isConnected, isLoading: isLoadingIntegration } = useIntegration();
   const { sync, isLoading: isSyncing, progress } = useSync();
+  const { pauseListings, activateListings, closeListings, updatePrice, updateStock, isLoading: isActioning } = useListingActions();
   
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [stockFilter, setStockFilter] = useState<string>('all');
   const [selectedListing, setSelectedListing] = useState<MLListing | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  // Dialogs
+  const [confirmAction, setConfirmAction] = useState<{ action: 'pause' | 'activate' | 'close'; itemIds: string[] } | null>(null);
+  const [priceDialog, setPriceDialog] = useState<{ listing: MLListing } | null>(null);
+  const [stockDialog, setStockDialog] = useState<{ listing: MLListing } | null>(null);
+  const [newPrice, setNewPrice] = useState('');
+  const [newStock, setNewStock] = useState('');
 
   const filteredListings = useMemo(() => {
     return listings.filter(listing => {
@@ -77,8 +113,85 @@ export default function Listings() {
     });
   }, [listings, search, statusFilter, stockFilter]);
 
+  // Selection helpers
+  const allFilteredSelected = filteredListings.length > 0 && filteredListings.every(l => selectedIds.has(l.id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredListings.map(l => l.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  // Get ML item IDs for selected listings
+  const getSelectedItemIds = (): string[] => {
+    return listings
+      .filter(l => selectedIds.has(l.id))
+      .map(l => l.item_id);
+  };
+
   const handleSync = () => {
     sync(false);
+  };
+
+  const handleBulkAction = (action: 'pause' | 'activate' | 'close') => {
+    const itemIds = getSelectedItemIds();
+    if (itemIds.length === 0) return;
+    setConfirmAction({ action, itemIds });
+  };
+
+  const executeAction = async () => {
+    if (!confirmAction) return;
+    
+    const { action, itemIds } = confirmAction;
+    
+    try {
+      if (action === 'pause') {
+        await pauseListings(itemIds);
+      } else if (action === 'activate') {
+        await activateListings(itemIds);
+      } else if (action === 'close') {
+        await closeListings(itemIds);
+      }
+      setSelectedIds(new Set());
+      refetch();
+    } finally {
+      setConfirmAction(null);
+    }
+  };
+
+  const handleUpdatePrice = async () => {
+    if (!priceDialog || !newPrice) return;
+    const price = parseFloat(newPrice);
+    if (isNaN(price) || price <= 0) return;
+    
+    await updatePrice(priceDialog.listing.item_id, price);
+    setPriceDialog(null);
+    setNewPrice('');
+    refetch();
+  };
+
+  const handleUpdateStock = async () => {
+    if (!stockDialog || !newStock) return;
+    const qty = parseInt(newStock);
+    if (isNaN(qty) || qty < 0) return;
+    
+    await updateStock(stockDialog.listing.item_id, qty);
+    setStockDialog(null);
+    setNewStock('');
+    refetch();
   };
 
   const getStatusBadge = (status: string) => {
@@ -130,6 +243,14 @@ export default function Listings() {
         {quantity} unid.
       </Badge>
     );
+  };
+
+  const getActionLabel = (action: 'pause' | 'activate' | 'close') => {
+    switch (action) {
+      case 'pause': return 'Pausar';
+      case 'activate': return 'Ativar';
+      case 'close': return 'Encerrar';
+    }
   };
 
   // Loading state
@@ -226,81 +347,146 @@ export default function Listings() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters & Actions */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por título ou ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+          <div className="flex flex-col gap-3">
+            {/* Search and Filters Row */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por título ou ID..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="active">Ativos</SelectItem>
+                  <SelectItem value="paused">Pausados</SelectItem>
+                  <SelectItem value="closed">Fechados</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={stockFilter} onValueChange={setStockFilter}>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue placeholder="Estoque" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="with_stock">Com estoque</SelectItem>
+                  <SelectItem value="without_stock">Sem estoque</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="outline" 
+                onClick={handleSync}
+                disabled={isSyncing}
+              >
+                {isSyncing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                {isSyncing ? progress || 'Sincronizando...' : 'Sincronizar'}
+              </Button>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="active">Ativos</SelectItem>
-                <SelectItem value="paused">Pausados</SelectItem>
-                <SelectItem value="closed">Fechados</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={stockFilter} onValueChange={setStockFilter}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Estoque" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="with_stock">Com estoque</SelectItem>
-                <SelectItem value="without_stock">Sem estoque</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button 
-              variant="outline" 
-              onClick={handleSync}
-              disabled={isSyncing}
-            >
-              {isSyncing ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              {isSyncing ? progress || 'Sincronizando...' : 'Sincronizar'}
-            </Button>
+
+            {/* Bulk Actions Row */}
+            {someSelected && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                <span className="text-sm font-medium">
+                  {selectedIds.size} selecionado(s)
+                </span>
+                <div className="flex gap-2 ml-auto">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleBulkAction('activate')}
+                    disabled={isActioning}
+                  >
+                    <Play className="w-4 h-4 mr-1" />
+                    Ativar
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleBulkAction('pause')}
+                    disabled={isActioning}
+                  >
+                    <Pause className="w-4 h-4 mr-1" />
+                    Pausar
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleBulkAction('close')}
+                    disabled={isActioning}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Ban className="w-4 h-4 mr-1" />
+                    Encerrar
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    Limpar
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Listings Grid/Table */}
+      {/* Listings Table (Desktop) */}
       <div className="hidden md:block">
         <Card>
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead>
                 <tr>
+                  <th className="w-10">
+                    <Checkbox 
+                      checked={allFilteredSelected}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Selecionar todos"
+                    />
+                  </th>
                   <th>Anúncio</th>
                   <th>Status</th>
                   <th>Estoque</th>
                   <th>Vendidos</th>
                   <th>Preço</th>
                   <th>Tipo</th>
-                  <th></th>
+                  <th className="w-10"></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredListings.map((listing) => (
                   <tr 
                     key={listing.id} 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => setSelectedListing(listing)}
+                    className={cn(
+                      "cursor-pointer hover:bg-muted/50",
+                      selectedIds.has(listing.id) && "bg-muted/30"
+                    )}
                   >
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <Checkbox 
+                        checked={selectedIds.has(listing.id)}
+                        onCheckedChange={() => toggleSelect(listing.id)}
+                        aria-label={`Selecionar ${listing.title}`}
+                      />
+                    </td>
+                    <td onClick={() => setSelectedListing(listing)}>
                       <div className="flex items-center gap-3">
                         {listing.thumbnail && (
                           <img 
@@ -315,22 +501,72 @@ export default function Listings() {
                         </div>
                       </div>
                     </td>
-                    <td>{getStatusBadge(listing.status)}</td>
-                    <td>{getStockBadge(listing.available_quantity)}</td>
-                    <td className="text-muted-foreground">{listing.sold_quantity}</td>
-                    <td className="font-medium">{formatCurrency(listing.price)}</td>
-                    <td className="text-xs text-muted-foreground">{listing.listing_type || '-'}</td>
-                    <td>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (listing.permalink) window.open(listing.permalink, '_blank');
-                        }}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </Button>
+                    <td onClick={() => setSelectedListing(listing)}>{getStatusBadge(listing.status)}</td>
+                    <td onClick={() => setSelectedListing(listing)}>{getStockBadge(listing.available_quantity)}</td>
+                    <td onClick={() => setSelectedListing(listing)} className="text-muted-foreground">{listing.sold_quantity}</td>
+                    <td onClick={() => setSelectedListing(listing)} className="font-medium">{formatCurrency(listing.price)}</td>
+                    <td onClick={() => setSelectedListing(listing)} className="text-xs text-muted-foreground">{listing.listing_type || '-'}</td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => {
+                            if (listing.permalink) window.open(listing.permalink, '_blank');
+                          }}>
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Ver no ML
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {listing.status !== 'active' && (
+                            <DropdownMenuItem 
+                              onClick={() => setConfirmAction({ action: 'activate', itemIds: [listing.item_id] })}
+                              disabled={isActioning}
+                            >
+                              <Play className="w-4 h-4 mr-2" />
+                              Ativar
+                            </DropdownMenuItem>
+                          )}
+                          {listing.status === 'active' && (
+                            <DropdownMenuItem 
+                              onClick={() => setConfirmAction({ action: 'pause', itemIds: [listing.item_id] })}
+                              disabled={isActioning}
+                            >
+                              <Pause className="w-4 h-4 mr-2" />
+                              Pausar
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => {
+                            setNewPrice(listing.price.toString());
+                            setPriceDialog({ listing });
+                          }}>
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            Alterar preço
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setNewStock(listing.available_quantity.toString());
+                            setStockDialog({ listing });
+                          }}>
+                            <Boxes className="w-4 h-4 mr-2" />
+                            Alterar estoque
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {listing.status !== 'closed' && (
+                            <DropdownMenuItem 
+                              onClick={() => setConfirmAction({ action: 'close', itemIds: [listing.item_id] })}
+                              disabled={isActioning}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Ban className="w-4 h-4 mr-2" />
+                              Encerrar
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}
@@ -345,19 +581,29 @@ export default function Listings() {
         {filteredListings.map((listing) => (
           <Card 
             key={listing.id} 
-            className="cursor-pointer"
-            onClick={() => setSelectedListing(listing)}
+            className={cn(
+              "cursor-pointer",
+              selectedIds.has(listing.id) && "ring-2 ring-primary"
+            )}
           >
             <CardContent className="p-4">
               <div className="flex gap-3">
+                <div className="flex items-start pt-1">
+                  <Checkbox 
+                    checked={selectedIds.has(listing.id)}
+                    onCheckedChange={() => toggleSelect(listing.id)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
                 {listing.thumbnail && (
                   <img 
                     src={listing.thumbnail} 
                     alt="" 
                     className="w-16 h-16 rounded-lg object-cover bg-muted flex-shrink-0"
+                    onClick={() => setSelectedListing(listing)}
                   />
                 )}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0" onClick={() => setSelectedListing(listing)}>
                   <p className="font-medium line-clamp-2">{listing.title}</p>
                   <p className="text-xs text-muted-foreground mt-1">{listing.item_id}</p>
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -366,6 +612,63 @@ export default function Listings() {
                   </div>
                   <p className="font-bold text-lg mt-2">{formatCurrency(listing.price)}</p>
                 </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="flex-shrink-0">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => {
+                      if (listing.permalink) window.open(listing.permalink, '_blank');
+                    }}>
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Ver no ML
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {listing.status !== 'active' && (
+                      <DropdownMenuItem 
+                        onClick={() => setConfirmAction({ action: 'activate', itemIds: [listing.item_id] })}
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        Ativar
+                      </DropdownMenuItem>
+                    )}
+                    {listing.status === 'active' && (
+                      <DropdownMenuItem 
+                        onClick={() => setConfirmAction({ action: 'pause', itemIds: [listing.item_id] })}
+                      >
+                        <Pause className="w-4 h-4 mr-2" />
+                        Pausar
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => {
+                      setNewPrice(listing.price.toString());
+                      setPriceDialog({ listing });
+                    }}>
+                      <DollarSign className="w-4 h-4 mr-2" />
+                      Alterar preço
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      setNewStock(listing.available_quantity.toString());
+                      setStockDialog({ listing });
+                    }}>
+                      <Boxes className="w-4 h-4 mr-2" />
+                      Alterar estoque
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {listing.status !== 'closed' && (
+                      <DropdownMenuItem 
+                        onClick={() => setConfirmAction({ action: 'close', itemIds: [listing.item_id] })}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Ban className="w-4 h-4 mr-2" />
+                        Encerrar
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardContent>
           </Card>
@@ -487,20 +790,164 @@ export default function Listings() {
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-2 pt-4 border-t">
+                <div className="flex flex-wrap gap-2 pt-4 border-t">
                   <Button 
-                    className="flex-1"
+                    variant="outline"
                     onClick={() => {
                       if (selectedListing.permalink) window.open(selectedListing.permalink, '_blank');
                     }}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    Ver no Mercado Livre
+                    Ver no ML
+                  </Button>
+                  {selectedListing.status !== 'active' && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setConfirmAction({ action: 'activate', itemIds: [selectedListing.item_id] });
+                        setSelectedListing(null);
+                      }}
+                      disabled={isActioning}
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      Ativar
+                    </Button>
+                  )}
+                  {selectedListing.status === 'active' && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setConfirmAction({ action: 'pause', itemIds: [selectedListing.item_id] });
+                        setSelectedListing(null);
+                      }}
+                      disabled={isActioning}
+                    >
+                      <Pause className="w-4 h-4 mr-2" />
+                      Pausar
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setNewPrice(selectedListing.price.toString());
+                      setPriceDialog({ listing: selectedListing });
+                      setSelectedListing(null);
+                    }}
+                  >
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Alterar preço
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setNewStock(selectedListing.available_quantity.toString());
+                      setStockDialog({ listing: selectedListing });
+                      setSelectedListing(null);
+                    }}
+                  >
+                    <Boxes className="w-4 h-4 mr-2" />
+                    Alterar estoque
                   </Button>
                 </div>
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Action Dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction ? `${getActionLabel(confirmAction.action)} anúncio(s)?` : ''}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction?.action === 'close' 
+                ? `Esta ação não pode ser desfeita. ${confirmAction.itemIds.length} anúncio(s) serão encerrados permanentemente.`
+                : `${confirmAction?.itemIds.length} anúncio(s) serão ${confirmAction?.action === 'pause' ? 'pausados' : 'ativados'}.`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={executeAction}
+              className={confirmAction?.action === 'close' ? 'bg-destructive hover:bg-destructive/90' : ''}
+            >
+              {isActioning ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {confirmAction ? getActionLabel(confirmAction.action) : ''}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Price Update Dialog */}
+      <Dialog open={!!priceDialog} onOpenChange={() => { setPriceDialog(null); setNewPrice(''); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar preço</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {priceDialog?.listing.title}
+            </p>
+            <div>
+              <label className="text-sm font-medium">Novo preço (R$)</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={newPrice}
+                onChange={(e) => setNewPrice(e.target.value)}
+                placeholder="0.00"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPriceDialog(null); setNewPrice(''); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdatePrice} disabled={isActioning || !newPrice}>
+              {isActioning ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stock Update Dialog */}
+      <Dialog open={!!stockDialog} onOpenChange={() => { setStockDialog(null); setNewStock(''); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar estoque</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {stockDialog?.listing.title}
+            </p>
+            <div>
+              <label className="text-sm font-medium">Quantidade disponível</label>
+              <Input
+                type="number"
+                min="0"
+                value={newStock}
+                onChange={(e) => setNewStock(e.target.value)}
+                placeholder="0"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setStockDialog(null); setNewStock(''); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdateStock} disabled={isActioning || !newStock}>
+              {isActioning ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Salvar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

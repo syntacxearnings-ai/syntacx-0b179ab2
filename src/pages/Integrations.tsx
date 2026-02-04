@@ -357,13 +357,28 @@ export default function Integrations() {
             <div className="p-4 rounded-lg bg-muted/50 text-sm">
               <p className="font-medium mb-2">Como obter as credenciais:</p>
               <ol className="space-y-1 text-muted-foreground list-decimal list-inside">
-                <li>Acesse <a href="https://developers.mercadolibre.com.br/apps" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mercado Livre Developers</a></li>
-                <li>Crie uma nova aplicação</li>
+                <li>Acesse <a href="https://developers.mercadolibre.com.br/devcenter" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mercado Livre Developers</a></li>
+                <li>Crie ou selecione uma aplicação</li>
                 <li>Copie o App ID (Client ID) e Secret</li>
                 <li>Configure a Redirect URI como:<br/>
                   <code className="text-xs bg-muted p-1 rounded break-all">https://vzgrnfoqdhjizttoxnhh.supabase.co/functions/v1/meli-oauth-callback</code>
                 </li>
               </ol>
+            </div>
+
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 text-sm">
+              <p className="font-semibold text-primary mb-2">⚠️ Importante: Habilite os escopos!</p>
+              <p className="text-muted-foreground mb-2">
+                No painel do Mercado Livre Developers, vá em <strong>"Escopos"</strong> e habilite:
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                <li><strong>read</strong> - Ler informações do vendedor</li>
+                <li><strong>write</strong> - Modificar informações</li>
+                <li><strong>offline_access</strong> - Acesso offline (refresh token)</li>
+              </ul>
+              <p className="text-xs text-muted-foreground mt-2">
+                Sem esses escopos, a sincronização de anúncios não funcionará.
+              </p>
             </div>
 
             <div className="space-y-2">

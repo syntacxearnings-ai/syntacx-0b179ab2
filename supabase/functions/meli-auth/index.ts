@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
@@ -90,18 +90,26 @@ serve(async (req) => {
     console.log('[ML Auth] redirect_uri:', redirectUri);
 
     // Build authorization URL
+    // IMPORTANT: The app must have these scopes enabled in ML Developers Console
+    // Go to: https://developers.mercadolibre.com.br/devcenter -> Your App -> Scopes
     const authUrl = new URL('https://auth.mercadolivre.com.br/authorization');
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('state', state);
-    // No scope or scope=offline_access only
+    
+    // Note: Mercado Libre doesn't use scope parameter in the OAuth URL
+    // Scopes are configured at the app level in the ML Developer Console
+    // The app must have "read", "write", and "offline_access" enabled
 
     console.log('[ML Auth] Authorization URL:', authUrl.toString());
 
     // Return the authorization URL for frontend to redirect
     return new Response(
-      JSON.stringify({ authorization_url: authUrl.toString() }),
+      JSON.stringify({ 
+        authorization_url: authUrl.toString(),
+        message: 'Certifique-se de que seu app no Mercado Livre Developers tem os escopos: read, write, offline_access'
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

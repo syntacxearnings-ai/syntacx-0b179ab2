@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Mail, Lock, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import sxLogo from '@/assets/sx-logo.png';
+import syntacxLogo from '@/assets/syntacx-logo.png';
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
@@ -137,9 +137,9 @@ export default function Auth() {
         {/* Logo - Clean, no effects */}
         <div className="flex flex-col items-center gap-3">
           <img 
-            src={sxLogo} 
+            src={syntacxLogo} 
             alt="Syntacx" 
-            className="h-14 w-auto object-contain" 
+            className="h-12 w-auto object-contain" 
           />
           <p className="text-sm text-zinc-400">Gestão inteligente do seu e-commerce</p>
         </div>

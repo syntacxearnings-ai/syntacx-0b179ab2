@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ListingGeneratorDialog } from '@/components/listings/ListingGeneratorDialog';
 import { useListings, MLListing } from '@/hooks/useListings';
 import { useIntegration } from '@/hooks/useIntegration';
 import { useSync } from '@/hooks/useSync';
@@ -384,6 +385,7 @@ export default function Listings() {
                   <SelectItem value="without_stock">Sem estoque</SelectItem>
                 </SelectContent>
               </Select>
+              <ListingGeneratorDialog />
               <Button 
                 variant="outline" 
                 onClick={handleSync}

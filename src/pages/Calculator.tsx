@@ -10,6 +10,14 @@ import { Calculator as CalcIcon, TrendingUp, AlertTriangle, Target, ArrowRight }
 import { cn } from '@/lib/utils';
 
 export default function Calculator() {
+  // String state for inputs to allow empty values while typing
+  const [inputStrings, setInputStrings] = useState({
+    productCost: '45',
+    packagingCost: '3',
+    shippingSeller: '5',
+    salePrice: '120',
+  });
+
   const [inputs, setInputs] = useState({
     productCost: 45,
     packagingCost: 3,
@@ -72,6 +80,26 @@ export default function Calculator() {
     setInputs(prev => ({ ...prev, [key]: value }));
   };
 
+  // Handle string input changes (for text fields that need to allow empty values)
+  const handleStringInputChange = (key: keyof typeof inputStrings, value: string) => {
+    setInputStrings(prev => ({ ...prev, [key]: value }));
+    // Only update numeric value if it's a valid number
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      updateInput(key as keyof typeof inputs, numValue);
+    } else if (value === '' || value === '-') {
+      updateInput(key as keyof typeof inputs, 0);
+    }
+  };
+
+  // Handle blur to reset empty inputs to 0
+  const handleInputBlur = (key: keyof typeof inputStrings) => {
+    if (inputStrings[key] === '' || inputStrings[key] === '-') {
+      setInputStrings(prev => ({ ...prev, [key]: '0' }));
+      updateInput(key as keyof typeof inputs, 0);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       <PageHeader 
@@ -100,19 +128,21 @@ export default function Calculator() {
                 <div className="space-y-2">
                   <Label>Custo do Produto (R$)</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    value={inputs.productCost}
-                    onChange={(e) => updateInput('productCost', parseFloat(e.target.value) || 0)}
+                    type="text"
+                    inputMode="decimal"
+                    value={inputStrings.productCost}
+                    onChange={(e) => handleStringInputChange('productCost', e.target.value)}
+                    onBlur={() => handleInputBlur('productCost')}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Embalagem (R$)</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    value={inputs.packagingCost}
-                    onChange={(e) => updateInput('packagingCost', parseFloat(e.target.value) || 0)}
+                    type="text"
+                    inputMode="decimal"
+                    value={inputStrings.packagingCost}
+                    onChange={(e) => handleStringInputChange('packagingCost', e.target.value)}
+                    onBlur={() => handleInputBlur('packagingCost')}
                   />
                 </div>
               </div>
@@ -120,10 +150,11 @@ export default function Calculator() {
               <div className="space-y-2">
                 <Label>Frete Vendedor (R$)</Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  value={inputs.shippingSeller}
-                  onChange={(e) => updateInput('shippingSeller', parseFloat(e.target.value) || 0)}
+                  type="text"
+                  inputMode="decimal"
+                  value={inputStrings.shippingSeller}
+                  onChange={(e) => handleStringInputChange('shippingSeller', e.target.value)}
+                  onBlur={() => handleInputBlur('shippingSeller')}
                 />
               </div>
             </div>
@@ -202,10 +233,11 @@ export default function Calculator() {
               <div className="space-y-2">
                 <Label>Preço (R$)</Label>
                 <Input
-                  type="number"
-                  step="1"
-                  value={inputs.salePrice}
-                  onChange={(e) => updateInput('salePrice', parseFloat(e.target.value) || 0)}
+                  type="text"
+                  inputMode="decimal"
+                  value={inputStrings.salePrice}
+                  onChange={(e) => handleStringInputChange('salePrice', e.target.value)}
+                  onBlur={() => handleInputBlur('salePrice')}
                   className="text-lg font-semibold"
                 />
               </div>

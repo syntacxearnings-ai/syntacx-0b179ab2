@@ -6,12 +6,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Frontend URL - configured for production domain
+const getFrontendUrl = () => {
+  // Priority: environment variable, then production domain
+  const envUrl = Deno.env.get('FRONTEND_URL');
+  if (envUrl) return envUrl;
+  
+  // Default to production domain
+  return 'https://syntacx.com';
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://289fa9d9-b6c0-4489-93d0-bad81c3761bb.lovableproject.com';
+  const frontendUrl = getFrontendUrl();
 
   try {
     const url = new URL(req.url);

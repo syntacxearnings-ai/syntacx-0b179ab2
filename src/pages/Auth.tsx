@@ -84,47 +84,68 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-[#0B0B0F]">
-      {/* Premium Background Effects */}
+      {/* Static Premium Background - No Animation */}
       <div className="absolute inset-0 overflow-hidden">
-        {/* Gradient Orbs */}
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/20 rounded-full blur-[128px] animate-pulse" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-primary/15 rounded-full blur-[128px] animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[200px]" />
-        
-        {/* Grid Pattern */}
+        {/* Static Gradient Orbs - Fixed positions, no animation */}
         <div 
-          className="absolute inset-0 opacity-[0.03]"
+          className="absolute top-1/4 -left-32 w-96 h-96 rounded-full"
           style={{
-            backgroundImage: `linear-gradient(hsl(var(--primary)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px)`,
-            backgroundSize: '50px 50px',
+            background: 'radial-gradient(circle, hsl(var(--primary) / 0.25) 0%, transparent 70%)',
+            filter: 'blur(80px)',
+          }}
+        />
+        <div 
+          className="absolute bottom-1/4 -right-32 w-96 h-96 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, hsl(var(--primary) / 0.18) 0%, transparent 70%)',
+            filter: 'blur(80px)',
+          }}
+        />
+        <div 
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, hsl(var(--primary) / 0.08) 0%, transparent 60%)',
+            filter: 'blur(100px)',
           }}
         />
         
-        {/* Top Gradient */}
-        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+        {/* Grid Pattern - Clean and visible */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `linear-gradient(hsl(var(--primary) / 0.06) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary) / 0.06) 1px, transparent 1px)`,
+            backgroundSize: '60px 60px',
+            filter: 'blur(0.3px)',
+          }}
+        />
+        
+        {/* Subtle Noise Overlay for anti-banding */}
+        <div 
+          className="absolute inset-0 pointer-events-none opacity-[0.015]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+            backgroundRepeat: 'repeat',
+            backgroundSize: '128px 128px',
+          }}
+        />
+        
+        {/* Top Accent Line */}
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
       </div>
 
       <div className="w-full max-w-md space-y-6 relative z-10">
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative group">
-            <div className="absolute inset-0 bg-primary/30 rounded-2xl blur-xl group-hover:bg-primary/40 transition-all duration-500" />
-            <img 
-              src={sxLogo} 
-              alt="Syntacx Logo" 
-              className="relative w-20 h-20 object-contain drop-shadow-2xl" 
-            />
-          </div>
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-white tracking-tight">
-              Syntacx <span className="text-primary">Ops</span>
-            </h1>
-            <p className="text-sm text-zinc-400 mt-1">Gestão inteligente do seu e-commerce</p>
-          </div>
+        {/* Logo - Clean, no effects */}
+        <div className="flex flex-col items-center gap-3">
+          <img 
+            src={sxLogo} 
+            alt="Syntacx" 
+            className="h-14 w-auto object-contain" 
+          />
+          <p className="text-sm text-zinc-400">Gestão inteligente do seu e-commerce</p>
         </div>
 
-        {/* Login Card */}
-        <Card className="border-zinc-800/50 bg-zinc-900/50 backdrop-blur-xl shadow-2xl shadow-primary/5">
+        {/* Login Card - Premium glassmorphism */}
+        <Card className="border-primary/10 bg-zinc-900/60 backdrop-blur-xl shadow-2xl shadow-black/40">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl text-center text-white">Acesse sua conta</CardTitle>
             <CardDescription className="text-center text-zinc-400">
@@ -176,7 +197,7 @@ export default function Auth() {
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full bg-primary hover:bg-primary/90 text-white font-medium shadow-lg shadow-primary/25" 
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-medium shadow-lg shadow-primary/20" 
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -241,7 +262,7 @@ export default function Auth() {
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full bg-primary hover:bg-primary/90 text-white font-medium shadow-lg shadow-primary/25" 
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-medium shadow-lg shadow-primary/20" 
                     disabled={isLoading}
                   >
                     {isLoading ? (
